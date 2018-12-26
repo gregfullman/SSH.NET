@@ -13,6 +13,11 @@ namespace Renci.SshNet.Messages.Authentication
         /// <summary>
         /// 
         /// </summary>
+        public GssapiMicMessage() { }
+
+        /// <summary>
+        /// 
+        /// </summary>
         /// <param name="micData"></param>
         public GssapiMicMessage(byte[] micData)
         {
@@ -25,6 +30,17 @@ namespace Renci.SshNet.Messages.Authentication
         protected override void LoadData()
         {
             // No response (supposedly) so nothing to do here
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        protected override int BufferCapacity
+        {
+            get
+            {
+                return base.BufferCapacity + 4 + _micData.Length;
+            }
         }
 
         /// <summary>

@@ -29,6 +29,22 @@ namespace Renci.SshNet.Messages.Authentication
         /// <summary>
         /// 
         /// </summary>
+        protected override int BufferCapacity
+        {
+            get
+            {
+                var capacity = base.BufferCapacity;
+                capacity += 4;  // number of mechanisms
+                capacity += 4 + 1;  // length of OID + 2, plus the GSS_OIDTYPE byte length
+                capacity += 1; // length of OID
+                capacity += _mechanism.Length;  // length of mechanisms array
+                return capacity;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         protected override void SaveData()
         {
             // This handles step 2 of the document

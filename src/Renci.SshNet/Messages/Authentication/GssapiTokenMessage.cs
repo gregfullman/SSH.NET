@@ -38,6 +38,17 @@ namespace Renci.SshNet.Messages.Authentication
         /// <summary>
         /// 
         /// </summary>
+        protected override int BufferCapacity
+        {
+            get
+            {
+                return base.BufferCapacity + 4 + _sendToken.Length;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         protected override void LoadData()
         {
             ReceiveToken = this.ReadBinary();
