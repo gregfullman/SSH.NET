@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using System.Linq;
 using Renci.SshNet.Common;
 using System.Globalization;
 using Renci.SshNet.Abstractions;
@@ -31,13 +30,22 @@ namespace Renci.SshNet.Messages
         /// </summary>
         protected override void WriteBytes(SshDataStream stream)
         {
-            var messageAttribute = GetType().GetCustomAttributes<MessageAttribute>(true).FirstOrDefault();
+            var enumerator = GetType().GetCustomAttributes<MessageAttribute>(true).GetEnumerator();
+            try
+            {
+                if (!enumerator.MoveNext())
+                {
+                    throw new SshException(string.Format(CultureInfo.CurrentCulture, "Type '{0}' is not a valid message type.", GetType().AssemblyQualifiedName));
+                }
 
-            if (messageAttribute == null)
-                throw new SshException(string.Format(CultureInfo.CurrentCulture, "Type '{0}' is not a valid message type.", GetType().AssemblyQualifiedName));
-
-            stream.WriteByte(messageAttribute.Number);
-            base.WriteBytes(stream);
+                var messageAttribute = enumerator.Current;
+                stream.WriteByte(messageAttribute.Number);
+                base.WriteBytes(stream);
+            }
+            finally
+            {
+                enumerator.Dispose();
+            }
         }
 
         internal byte[] GetPacket(byte paddingMultiplier, Compressor compressor)
@@ -94,7 +102,7 @@ namespace Renci.SshNet.Messages
                 sshDataStream.Seek(outboundPacketSequenceSize, SeekOrigin.Begin);
 
                 // add packet data length
-                sshDataStream.Write(packetDataLength.GetBytes(), 0, 4);
+                sshDataStream.Write(packetDataLength);
 
                 //  add packet padding length
                 sshDataStream.WriteByte(paddingLength);
@@ -115,7 +123,7 @@ namespace Renci.SshNet.Messages
                 sshDataStream.Seek(outboundPacketSequenceSize, SeekOrigin.Begin);
 
                 // add packet data length
-                sshDataStream.Write(packetDataLength.GetBytes(), 0, 4);
+                sshDataStream.Write(packetDataLength);
 
                 //  add packet padding length
                 sshDataStream.WriteByte(paddingLength);
@@ -148,19 +156,33 @@ namespace Renci.SshNet.Messages
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Returns a <see cref="string"/> that represents this instance.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override string ToString()
         {
-            var messageAttribute = GetType().GetCustomAttributes<MessageAttribute>(true).SingleOrDefault();
+            var enumerator = GetType().GetCustomAttributes<MessageAttribute>(true).GetEnumerator();
+            try
+            {
+                if (!enumerator.MoveNext())
+                {
+                    return string.Format(CultureInfo.CurrentCulture, "'{0}' without Message attribute.", GetType().FullName);
+                }
 
-            if (messageAttribute == null)
-                return string.Format(CultureInfo.CurrentCulture, "'{0}' without Message attribute.", GetType().FullName);
-
-            return messageAttribute.Name;
+                return enumerator.Current.Name;
+            }
+            finally
+            {
+                enumerator.Dispose();
+            }
         }
+
+        /// <summary>
+        /// Process the current message for the specified <see cref="Session"/>.
+        /// </summary>
+        /// <param name="session">The <see cref="Session"/> for which to process the current message.</param>
+        internal abstract void Process(Session session);
     }
 }

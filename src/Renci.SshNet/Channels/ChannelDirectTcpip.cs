@@ -129,10 +129,18 @@ namespace Renci.SshNet.Channels
 
             lock (_socketLock)
             {
-                if (_socket == null || !_socket.Connected)
+                if (!_socket.IsConnected())
                     return;
 
-                _socket.Shutdown(how);
+                try
+                {
+                    _socket.Shutdown(how);
+                }
+                catch (SocketException ex)
+                {
+                    // TODO: log as warning
+                    DiagnosticAbstraction.Log("Failure shutting down socket: " + ex);
+                }
             }
         }
 
@@ -169,11 +177,11 @@ namespace Renci.SshNet.Channels
         {
             base.OnData(data);
 
-            if (_socket != null && _socket.Connected)
+            if (_socket != null)
             {
                 lock (_socketLock)
                 {
-                    if (_socket != null && _socket.Connected)
+                    if (_socket.IsConnected())
                     {
                         SocketAbstraction.Send(_socket, data, 0, data.Length);
                     }
@@ -263,10 +271,11 @@ namespace Renci.SshNet.Channels
                 {
                     lock (_socketLock)
                     {
-                        if (_socket != null)
+                        var socket = _socket;
+                        if (socket != null)
                         {
-                            _socket.Dispose();
                             _socket = null;
+                            socket.Dispose();
                         }
                     }
                 }

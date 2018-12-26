@@ -86,66 +86,6 @@ namespace Renci.SshNet.Tests.Classes.Common
             Assert.AreEqual(two, request.ValueTwo);
         }
 
-
-        [TestMethod]
-        public void OfType()
-        {
-            const uint one = 123456u;
-            const uint two = 456789u;
-
-            var sshDataStream = new SshDataStream(8);
-            sshDataStream.Write(one);
-            sshDataStream.Write(two);
-
-            var sshData = sshDataStream.ToArray();
-
-            var request = new RequestSshData();
-            request.Load(sshData);
-
-            var reply = request.OfType<ReplySshData>();
-            Assert.IsNotNull(reply);
-            Assert.AreEqual(one, reply.ValueOne);
-        }
-
-        [TestMethod]
-        public void OfType_LoadWithOffset()
-        {
-            const uint one = 123456u;
-            const uint two = 456789u;
-
-            var sshDataStream = new SshDataStream(11);
-            sshDataStream.WriteByte(0x05);
-            sshDataStream.WriteByte(0x07);
-            sshDataStream.WriteByte(0x0f);
-            sshDataStream.Write(one);
-            sshDataStream.Write(two);
-
-            var sshData = sshDataStream.ToArray();
-
-            var request = new RequestSshData();
-            request.Load(sshData, 3, sshData.Length - 3);
-            var reply = request.OfType<ReplySshData>();
-            Assert.IsNotNull(reply);
-            Assert.AreEqual(one, reply.ValueOne);
-        }
-
-        [TestMethod]
-        public void OfType_ShouldThrowArgumentNullExceptionWhenNoDataIsLoaded()
-        {
-            var request = new RequestSshData();
-
-            try
-            {
-                request.OfType<ReplySshData>();
-                Assert.Fail();
-            }
-            catch (ArgumentNullException ex)
-            {
-                Assert.IsNull(ex.InnerException);
-                Assert.AreEqual("data", ex.ParamName);
-            }
-        }
-
         private class BoolSshData : SshData
         {
             private readonly bool _value;
@@ -153,16 +93,6 @@ namespace Renci.SshNet.Tests.Classes.Common
             public BoolSshData(bool value)
             {
                 _value = value;
-            }
-
-            public new bool IsEndOfData
-            {
-                get { return base.IsEndOfData; }
-            }
-
-            public new byte ReadByte()
-            {
-                return base.ReadByte();
             }
 
             protected override void LoadData()
@@ -179,16 +109,6 @@ namespace Renci.SshNet.Tests.Classes.Common
         {
             private uint _valueOne;
             private uint _valueTwo;
-
-            public RequestSshData()
-            {
-            }
-
-            public RequestSshData(uint one, uint two)
-            {
-                _valueOne = one;
-                _valueTwo = two;
-            }
 
             protected override int BufferCapacity
             {
@@ -223,41 +143,6 @@ namespace Renci.SshNet.Tests.Classes.Common
             {
                 Write(ValueOne);
                 Write(ValueTwo);
-            }
-        }
-
-        private class ReplySshData : SshData
-        {
-            private uint _valueOne;
-
-            public ReplySshData()
-            {
-            }
-
-            protected override int BufferCapacity
-            {
-                get
-                {
-                    var capacity = base.BufferCapacity;
-                    capacity += 4; // ValueOne
-                    return capacity;
-                }
-            }
-
-            public uint ValueOne
-            {
-                get { return _valueOne; }
-                set { _valueOne = value; }
-            }
-
-            protected override void LoadData()
-            {
-                _valueOne = ReadUInt32();
-            }
-
-            protected override void SaveData()
-            {
-                Write(ValueOne);
             }
         }
     }

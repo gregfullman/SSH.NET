@@ -120,11 +120,20 @@ namespace Renci.SshNet.Channels
         public uint LocalChannelNumber { get; private set; }
 
         /// <summary>
-        /// Gets the maximum size of a packet.
+        /// Gets the maximum size of a data packet that we can receive using the channel.
         /// </summary>
         /// <value>
         /// The maximum size of a packet.
         /// </value>
+        /// <remarks>
+        /// <para>
+        /// This is the maximum size (in bytes) we support for the data (payload) of a
+        /// <c>SSH_MSG_CHANNEL_DATA</c> message we receive.
+        /// </para>
+        /// <para>
+        /// We currently do not enforce this limit.
+        /// </para>
+        /// </remarks>
         public uint LocalPacketSize { get; private set; }
 
         /// <summary>
@@ -392,17 +401,22 @@ namespace Renci.SshNet.Channels
             _closeMessageReceived = true;
 
             // signal that SSH_MSG_CHANNEL_CLOSE message was received from server
+            // we need to signal this before firing the Closed event, as a subscriber
+            // may very well react to the Closed event by closing or disposing the
+            // channel which in turn will wait for this handle to be signaled
             var channelClosedWaitHandle = _channelClosedWaitHandle;
             if (channelClosedWaitHandle != null)
                 channelClosedWaitHandle.Set();
 
-            // close the channel
-            Close();
-
-            // raise event signaling that the server has closed the channel
+            // raise event signaling that the server has closed its end of the channel
             var closed = Closed;
             if (closed != null)
+            {
                 closed(this, new ChannelEventArgs(LocalChannelNumber));
+            }
+
+            // close the channel
+            Close();
         }
 
         /// <summary>
@@ -439,10 +453,10 @@ namespace Renci.SshNet.Channels
         #endregion // Channel virtual methods
 
         /// <summary>
-        /// Raises <see cref="Channel.Exception"/> event.
+        /// Raises <see cref="Exception"/> event.
         /// </summary>
         /// <param name="exception">The exception.</param>
-        protected void RaiseExceptionEvent(Exception exception)
+        private void RaiseExceptionEvent(Exception exception)
         {
             var handlers = Exception;
             if (handlers != null)
@@ -773,7 +787,7 @@ namespace Renci.SshNet.Channels
                 lock (_serverWindowSizeLock)
                 {
                     var serverWindowSize = RemoteWindowSize;
-                    if (serverWindowSize == 0)
+                    if (serverWindowSize == 0U)
                     {
                         // allow us to be signal when remote window size is adjusted
                         _channelServerWindowAdjustWaitHandle.Reset();

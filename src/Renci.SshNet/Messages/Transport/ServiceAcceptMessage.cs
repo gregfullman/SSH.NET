@@ -1,4 +1,5 @@
 ﻿using System;
+using Renci.SshNet.Common;
 
 namespace Renci.SshNet.Messages.Transport
 {
@@ -32,6 +33,11 @@ namespace Renci.SshNet.Messages.Transport
         protected override void SaveData()
         {
             throw new NotImplementedException();
+        }
+
+        internal override void Process(Session session)
+        {
+            session.OnServiceAcceptReceived(this);
         }
     }
 }
