@@ -17,8 +17,7 @@ namespace Renci.SshNet.Tests.Classes
         private Mock<IChannelSession> _channelAfterDisconnectMock;
         private string _subsystemName;
         private SubsystemSessionStub _subsystemSession;
-        private TimeSpan _operationTimeout;
-        private Encoding _encoding;
+        private int _operationTimeout;
         private IList<EventArgs> _disconnectedRegister;
         private IList<ExceptionEventArgs> _errorOccurredRegister;
         private MockSequence _sequence;
@@ -34,8 +33,7 @@ namespace Renci.SshNet.Tests.Classes
         {
             var random = new Random();
             _subsystemName = random.Next().ToString(CultureInfo.InvariantCulture);
-            _operationTimeout = TimeSpan.FromSeconds(30);
-            _encoding = Encoding.UTF8;
+            _operationTimeout = 30000;
             _disconnectedRegister = new List<EventArgs>();
             _errorOccurredRegister = new List<ExceptionEventArgs>();
 
@@ -47,7 +45,6 @@ namespace Renci.SshNet.Tests.Classes
             _sessionMock.InSequence(_sequence).Setup(p => p.CreateChannelSession()).Returns(_channelBeforeDisconnectMock.Object);
             _channelBeforeDisconnectMock.InSequence(_sequence).Setup(p => p.Open());
             _channelBeforeDisconnectMock.InSequence(_sequence).Setup(p => p.SendSubsystemRequest(_subsystemName)).Returns(true);
-            _channelBeforeDisconnectMock.InSequence(_sequence).Setup(p => p.Close());
             _channelBeforeDisconnectMock.InSequence(_sequence).Setup(p => p.Dispose());
             _sessionMock.InSequence(_sequence).Setup(p => p.CreateChannelSession()).Returns(_channelAfterDisconnectMock.Object);
             _channelAfterDisconnectMock.InSequence(_sequence).Setup(p => p.Open());
@@ -56,8 +53,7 @@ namespace Renci.SshNet.Tests.Classes
             _subsystemSession = new SubsystemSessionStub(
                 _sessionMock.Object,
                 _subsystemName,
-                _operationTimeout,
-                _encoding);
+                _operationTimeout);
             _subsystemSession.Disconnected += (sender, args) => _disconnectedRegister.Add(args);
             _subsystemSession.ErrorOccurred += (sender, args) => _errorOccurredRegister.Add(args);
             _subsystemSession.Connect();
@@ -102,25 +98,13 @@ namespace Renci.SshNet.Tests.Classes
         }
 
         [TestMethod]
-        public void CloseOnChannelBeforeDisconnectShouldBeInvokedOnce()
-        {
-            _channelBeforeDisconnectMock.Verify(p => p.Close(), Times.Once);
-        }
-
-        [TestMethod]
-        public void CloseOnChannelAfterDisconnectShouldNeverBeInvoked()
-        {
-            _channelAfterDisconnectMock.Verify(p => p.Close(), Times.Never);
-        }
-
-        [TestMethod]
         public void DisposeOnChannelBeforeDisconnectShouldBeInvokedOnce()
         {
             _channelBeforeDisconnectMock.Verify(p => p.Dispose(), Times.Once);
         }
 
         [TestMethod]
-        public void DisposeOnChannelAfterDisconnectShouldBeInvokedOnce()
+        public void DisposeOnChannelAfterDisconnectShouldNeverBeInvoked()
         {
             _channelAfterDisconnectMock.Verify(p => p.Dispose(), Times.Never);
         }

@@ -24,7 +24,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>Bin\Debug</OutputPath>
-    <DefineConstants>TRACE;DEBUG;FEATURE_DEVICEINFORMATION_APM;FEATURE_MEMORYSTREAM_GETBUFFER;FEATURE_REGEX_COMPILE;FEATURE_RNG_CSP;FEATURE_SOCKET_EAP;FEATURE_STREAM_APM;FEATURE_DEVICEINFORMATION_APM;FEATURE_THREAD_THREADPOOL;FEATURE_THREAD_SLEEP;FEATURE_HASH_SHA1;FEATURE_HASH_SHA256;FEATURE_HMAC_SHA1;FEATURE_HMAC_SHA256</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;FEATURE_DEVICEINFORMATION_APM;FEATURE_MEMORYSTREAM_GETBUFFER;FEATURE_REGEX_COMPILE;FEATURE_RNG_CSP;FEATURE_SOCKET_EAP;FEATURE_SOCKET_DISPOSE;FEATURE_STREAM_APM;FEATURE_DEVICEINFORMATION_APM;FEATURE_THREAD_THREADPOOL;FEATURE_THREAD_SLEEP;FEATURE_WAITHANDLE_DISPOSE;FEATURE_HASH_SHA1;FEATURE_HASH_SHA256;FEATURE_HMAC_SHA1;FEATURE_HMAC_SHA256</DefineConstants>
     <NoStdLib>true</NoStdLib>
     <NoConfig>true</NoConfig>
     <ErrorReport>prompt</ErrorReport>
@@ -35,7 +35,7 @@
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>Bin\Release</OutputPath>
-    <DefineConstants>TRACE;FEATURE_DEVICEINFORMATION_APM;FEATURE_MEMORYSTREAM_GETBUFFER;FEATURE_REGEX_COMPILE;FEATURE_RNG_CSP;FEATURE_SOCKET_EAP;FEATURE_STREAM_APM;FEATURE_DEVICEINFORMATION_APM;FEATURE_THREAD_THREADPOOL;FEATURE_THREAD_SLEEP;FEATURE_HASH_SHA1;FEATURE_HASH_SHA256;FEATURE_HMAC_SHA1;FEATURE_HMAC_SHA256</DefineConstants>
+    <DefineConstants>TRACE;FEATURE_DEVICEINFORMATION_APM;FEATURE_MEMORYSTREAM_GETBUFFER;FEATURE_REGEX_COMPILE;FEATURE_RNG_CSP;FEATURE_SOCKET_EAP;FEATURE_SOCKET_DISPOSE;FEATURE_STREAM_APM;FEATURE_DEVICEINFORMATION_APM;FEATURE_THREAD_THREADPOOL;FEATURE_THREAD_SLEEP;FEATURE_WAITHANDLE_DISPOSE;FEATURE_HASH_SHA1;FEATURE_HASH_SHA256;FEATURE_HMAC_SHA1;FEATURE_HMAC_SHA256</DefineConstants>
     <NoStdLib>true</NoStdLib>
     <NoConfig>true</NoConfig>
     <ErrorReport>prompt</ErrorReport>
@@ -191,11 +191,17 @@
     <Compile Include="..\Renci.SshNet\Common\ObjectIdentifier.cs">
       <Link>Common\ObjectIdentifier.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Common\Pack.cs">
+      <Link>Common\Pack.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Common\PipeStream.cs">
       <Link>Common\PipeStream.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Common\PortForwardEventArgs.cs">
       <Link>Common\PortForwardEventArgs.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Common\PosixPath.cs">
+      <Link>Common\PosixPath.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Common\ProxyException.cs">
       <Link>Common\ProxyException.cs</Link>
@@ -299,6 +305,9 @@
     <Compile Include="..\Renci.SshNet\IForwardedPort.cs">
       <Link>IForwardedPort.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\IRemotePathTransformation.cs">
+      <Link>IRemotePathTransformation.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\IServiceFactory.cs">
       <Link>IServiceFactory.cs</Link>
     </Compile>
@@ -355,6 +364,9 @@
     </Compile>
     <Compile Include="..\Renci.SshNet\Messages\Authentication\SuccessMessage.cs">
       <Link>Messages\Authentication\SuccessMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Connection\CancelTcpIpForwardGlobalRequestMessage.cs">
+      <Link>Messages\Connection\CancelTcpIpForwardGlobalRequestMessage.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Messages\Connection\ChannelCloseMessage.cs">
       <Link>Messages\Connection\ChannelCloseMessage.cs</Link>
@@ -467,6 +479,9 @@
     <Compile Include="..\Renci.SshNet\Messages\Connection\RequestSuccessMessage.cs">
       <Link>Messages\Connection\RequestSuccessMessage.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Connection\TcpIpForwardGlobalRequestMessage.cs">
+      <Link>Messages\Connection\TcpIpForwardGlobalRequestMessage.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Messages\Message.cs">
       <Link>Messages\Message.cs</Link>
     </Compile>
@@ -550,6 +565,18 @@
     </Compile>
     <Compile Include="..\Renci.SshNet\ProxyTypes.cs">
       <Link>ProxyTypes.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\RemotePathDoubleQuoteTransformation.cs">
+      <Link>RemotePathDoubleQuoteTransformation.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\RemotePathNoneTransformation.cs">
+      <Link>RemotePathNoneTransformation.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\RemotePathShellQuoteTransformation.cs">
+      <Link>RemotePathShellQuoteTransformation.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\RemotePathTransformation.cs">
+      <Link>RemotePathTransformation.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\ScpClient.cs">
       <Link>ScpClient.cs</Link>
@@ -701,14 +728,17 @@
     <Compile Include="..\Renci.SshNet\Session.cs">
       <Link>Session.cs</Link>
     </Compile>
-    <Compile Include="..\Renci.SshNet.Silverlight\Session.SilverlightShared.cs">
-      <Link>Session.cs</Link>
-    </Compile>
     <Compile Include="..\Renci.SshNet\SftpClient.cs">
       <Link>SftpClient.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Flags.cs">
       <Link>Sftp\Flags.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\ISftpFileReader.cs">
+      <Link>Sftp\ISftpFileReader.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\ISftpResponseFactory.cs">
+      <Link>Sftp\ISftpResponseFactory.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\ISftpSession.cs">
       <Link>Sftp\ISftpSession.cs</Link>
@@ -827,6 +857,9 @@
     <Compile Include="..\Renci.SshNet\Sftp\Responses\SftpVersionResponse.cs">
       <Link>Sftp\Responses\SftpVersionResponse.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpCloseAsyncResult.cs">
+      <Link>Sftp\SftpCloseAsyncResult.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpDownloadAsyncResult.cs">
       <Link>Sftp\SftpDownloadAsyncResult.cs</Link>
     </Compile>
@@ -835,6 +868,9 @@
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpFileAttributes.cs">
       <Link>Sftp\SftpFileAttributes.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpFileReader.cs">
+      <Link>Sftp\SftpFileReader.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpFileStream.cs">
       <Link>Sftp\SftpFileStream.cs</Link>
@@ -851,8 +887,23 @@
     <Compile Include="..\Renci.SshNet\Sftp\SftpMessageTypes.cs">
       <Link>Sftp\SftpMessageTypes.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpOpenAsyncResult.cs">
+      <Link>Sftp\SftpOpenAsyncResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpReadAsyncResult.cs">
+      <Link>Sftp\SftpReadAsyncResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpRealPathAsyncResult.cs">
+      <Link>Sftp\SftpRealPathAsyncResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpResponseFactory.cs">
+      <Link>Sftp\SftpResponseFactory.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpSession.cs">
       <Link>Sftp\SftpSession.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SFtpStatAsyncResult.cs">
+      <Link>Sftp\SFtpStatAsyncResult.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpSynchronizeDirectoriesAsyncResult.cs">
       <Link>Sftp\SftpSynchronizeDirectoriesAsyncResult.cs</Link>
@@ -885,7 +936,6 @@
     <Compile Include="..\Renci.SshNet\Properties\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="Session.WP.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config">

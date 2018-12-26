@@ -33,7 +33,7 @@ namespace Renci.SshNet.Tests.Classes.Common
             0x1D, 0x33, 0xFB, 0xFE, 0xB1, 0x2, 0x85, 0x44, 0xCA, 0xDC, 0xFB, 0x70, 0xD, 0x39,
             0xB1, 0x47, 0xB6, 0xE6, 0xA2, 0xD1, 0x19, 0x1E, 0x9F, 0xE4, 0x3C, 0x1E, 0x16, 0x56, 0x13, 0x9C, 0x4D, 0xD3,
             0x5C, 0x74, 0xC9, 0xBD, 0xFA, 0x56, 0x40, 0x58, 0xAC, 0x20, 0x6B, 0x55, 0xA2, 0xD5, 0x41, 0x38, 0xA4, 0x6D,
-            0xF6, 0x8C,
+            0xF6, 0x8C
         };
 
         private static readonly byte[] huge_b =
@@ -41,7 +41,7 @@ namespace Renci.SshNet.Tests.Classes.Common
             0x96, 0x5, 0xDA, 0xFE, 0x93, 0x17, 0xC1, 0x93, 0xEC, 0x2F, 0x30, 0x2D, 0x8F,
             0x28, 0x13, 0x99, 0x70, 0xF4, 0x4C, 0x60, 0xA6, 0x49, 0x24, 0xF9, 0xB3, 0x4A, 0x41, 0x67, 0xDC, 0xDD, 0xB1,
             0xA5, 0xA6, 0xC0, 0x3D, 0x57, 0x9A, 0xCB, 0x29, 0xE2, 0x94, 0xAC, 0x6C, 0x7D, 0xEF, 0x3E, 0xC6, 0x7A, 0xC1,
-            0xA8, 0xC8, 0xB0, 0x20, 0x95, 0xE6, 0x4C, 0xE1, 0xE0, 0x4B, 0x49, 0xD5, 0x5A, 0xB7,
+            0xA8, 0xC8, 0xB0, 0x20, 0x95, 0xE6, 0x4C, 0xE1, 0xE0, 0x4B, 0x49, 0xD5, 0x5A, 0xB7
         };
 
         private static readonly byte[] huge_add =
@@ -49,7 +49,7 @@ namespace Renci.SshNet.Tests.Classes.Common
             0xB3, 0x38, 0xD5, 0xFD, 0x45, 0x1A, 0x46, 0xD8, 0xB6, 0xC, 0x2C, 0x9E, 0x9C,
             0x61, 0xC4, 0xE0, 0x26, 0xDB, 0xEF, 0x31, 0xC0, 0x67, 0xC3, 0xDD, 0xF0, 0x68, 0x57, 0xBD, 0xEF, 0x79, 0xFF,
             0x78, 0x3, 0x35, 0x7, 0x15, 0x95, 0x22, 0x6A, 0x3A, 0x41, 0xCD, 0xD7, 0xD2, 0x91, 0x14, 0x8, 0xB3, 0x65,
-            0x16, 0xBF, 0x3D, 0x20, 0x95, 0xE6, 0x4C, 0xE1, 0xE0, 0x4B, 0x49, 0xD5, 0x5A, 0xB7,
+            0x16, 0xBF, 0x3D, 0x20, 0x95, 0xE6, 0x4C, 0xE1, 0xE0, 0x4B, 0x49, 0xD5, 0x5A, 0xB7
         };
 
         private static readonly byte[] a_m_b =
@@ -57,7 +57,7 @@ namespace Renci.SshNet.Tests.Classes.Common
             0x87, 0x2D, 0x21, 0x0, 0x1E, 0xEB, 0xC3, 0xB0, 0xDD, 0xAC, 0xCB, 0x43, 0x7E, 0x10,
             0x9E, 0xAE, 0x45, 0xF2, 0x55, 0x71, 0x73, 0xD4, 0x7A, 0xEB, 0x88, 0xD3, 0xD4, 0xEE, 0x36, 0xBE, 0x9B, 0x2D,
             0xB6, 0xB3, 0x8B, 0x66, 0x60, 0x8B, 0x16, 0x76, 0x17, 0x74, 0xFE, 0xD7, 0xB2, 0x96, 0x7B, 0xBD, 0xE2, 0xC4,
-            0x2D, 0xDC, 0xDE, 0x6A, 0x19, 0xB3, 0x1E, 0x1F, 0xB4, 0xB6, 0x2A, 0xA5, 0x48,
+            0x2D, 0xDC, 0xDE, 0x6A, 0x19, 0xB3, 0x1E, 0x1F, 0xB4, 0xB6, 0x2A, 0xA5, 0x48
         };
 
         private static readonly byte[] b_m_a =
@@ -65,7 +65,7 @@ namespace Renci.SshNet.Tests.Classes.Common
             0x79, 0xD2, 0xDE, 0xFF, 0xE1, 0x14, 0x3C, 0x4F, 0x22, 0x53, 0x34, 0xBC, 0x81,
             0xEF, 0x61, 0x51, 0xBA, 0xD, 0xAA, 0x8E, 0x8C, 0x2B, 0x85, 0x14, 0x77, 0x2C, 0x2B, 0x11, 0xC9, 0x41, 0x64,
             0xD2, 0x49, 0x4C, 0x74, 0x99, 0x9F, 0x74, 0xE9, 0x89, 0xE8, 0x8B, 0x1, 0x28, 0x4D, 0x69, 0x84, 0x42, 0x1D,
-            0x3B, 0xD2, 0x23, 0x21, 0x95, 0xE6, 0x4C, 0xE1, 0xE0, 0x4B, 0x49, 0xD5, 0x5A, 0xB7,
+            0x3B, 0xD2, 0x23, 0x21, 0x95, 0xE6, 0x4C, 0xE1, 0xE0, 0x4B, 0x49, 0xD5, 0x5A, 0xB7
         };
 
         private static readonly byte[] huge_mul =
@@ -76,17 +76,17 @@ namespace Renci.SshNet.Tests.Classes.Common
             0xBC, 0xCA, 0x3E, 0x94, 0x95, 0xDA, 0x49, 0xE2, 0xA8, 0x33, 0xA2, 0x6A, 0x33, 0xB1, 0xF2, 0xEA, 0x99, 0x32,
             0xD0, 0xB2, 0xAE, 0x55, 0x75, 0xBD, 0x19, 0xFC, 0x9A, 0xEC, 0x54, 0x87, 0x2A, 0x6, 0xCC, 0x78, 0xDA, 0x88,
             0xBB, 0xAB, 0xA5, 0x47, 0xEF, 0xC7, 0x2B, 0xC7, 0x5B, 0x32, 0x31, 0xCD, 0xD9, 0x53, 0x96, 0x1A, 0x9D, 0x9A,
-            0x57, 0x40, 0x51, 0xB6, 0x5D, 0xC, 0x17, 0xD1, 0x86, 0xE9, 0xA4, 0x20,
+            0x57, 0x40, 0x51, 0xB6, 0x5D, 0xC, 0x17, 0xD1, 0x86, 0xE9, 0xA4, 0x20
         };
 
-        private static readonly byte[] huge_div = {0x0,};
+        private static readonly byte[] huge_div = {0x0};
 
         private static readonly byte[] huge_rem =
         {
             0x1D, 0x33, 0xFB, 0xFE, 0xB1, 0x2, 0x85, 0x44, 0xCA, 0xDC, 0xFB, 0x70, 0xD,
             0x39, 0xB1, 0x47, 0xB6, 0xE6, 0xA2, 0xD1, 0x19, 0x1E, 0x9F, 0xE4, 0x3C, 0x1E, 0x16, 0x56, 0x13, 0x9C, 0x4D,
             0xD3, 0x5C, 0x74, 0xC9, 0xBD, 0xFA, 0x56, 0x40, 0x58, 0xAC, 0x20, 0x6B, 0x55, 0xA2, 0xD5, 0x41, 0x38, 0xA4,
-            0x6D, 0xF6, 0x8C,
+            0x6D, 0xF6, 0x8C
         };
         private static readonly byte[][] add_a = {new byte[] {1}, new byte[] {0xFF}, huge_a};
         private static readonly byte[][] add_b = {new byte[] {1}, new byte[] {1}, huge_b};
@@ -725,7 +725,7 @@ namespace Renci.SshNet.Tests.Classes.Common
             arr = new byte[] { 0xFF, 00 };
             AssertEqual(arr, new BigInteger(arr).ToByteArray());
 
-            arr = new byte[] { 1, 0, 0, 0, 0, 0, };
+            arr = new byte[] { 1, 0, 0, 0, 0, 0 };
             AssertEqual(new byte[] { 1 }, new BigInteger(arr).ToByteArray());
         }
 
@@ -926,8 +926,8 @@ namespace Renci.SshNet.Tests.Classes.Common
         [TestMethod]
         public void ShortOperators()
         {
-            Assert.AreEqual(22, (int)new BigInteger((short)22), "#1");
-            Assert.AreEqual(-22, (int)new BigInteger((short)-22), "#2");
+            Assert.AreEqual(22, (int)new BigInteger(22), "#1");
+            Assert.AreEqual(-22, (int)new BigInteger(-22), "#2");
 
             try
             {
@@ -1648,6 +1648,80 @@ namespace Renci.SshNet.Tests.Classes.Common
             Assert.IsFalse(zero.IsPowerOfTwo);
             Assert.IsTrue(zero.IsZero);
             Assert.AreEqual(0, zero.Sign);
+        }
+
+        [TestMethod]
+        public void Random()
+        {
+            var max = "26432534714839143538998938508341375449389492936207135611931371046236385860280414659368073862189301615603000443463893527273703804361856647266218472759410964268979057798543462774631912259980510080575520846081682603934587649566608158932346151315049355432937004801361578344502537300865702429436253728164365180058583916866804254965536833106467354901266304654706123552932560896874808786957654734387252964281680963136344135750381838556467139236094522411774117748615141352874979928570068255439327082539676660277104989857941859821396157749462154431239343148671646397611770487668571604363151098131876313773395912355145689712506";
+            BigInteger maxBigInt;
+            Assert.IsTrue(BigInteger.TryParse(max, NumberStyles.Number, NumberFormatInfo.CurrentInfo, out maxBigInt));
+
+            var random = BigInteger.One;
+            while (random <= BigInteger.One || random >= maxBigInt)
+            {
+                random = BigInteger.Random(2048);
+            }
+        }
+
+        [TestMethod]
+        public void TestClientExhcangeGenerationItem130()
+        {
+            var test = "1090748135619415929450294929359784500348155124953172211774101106966150168922785639028532473848836817769712164169076432969224698752674677662739994265785437233596157045970922338040698100507861033047312331823982435279475700199860971612732540528796554502867919746776983759391475987142521315878719577519148811830879919426939958487087540965716419167467499326156226529675209172277001377591248147563782880558861083327174154014975134893125116015776318890295960698011614157721282527539468816519319333337503114777192360412281721018955834377615480468479252748867320362385355596601795122806756217713579819870634321561907813255153703950795271232652404894983869492174481652303803498881366210508647263668376514131031102336837488999775744046733651827239395353540348414872854639719294694323450186884189822544540647226987292160693184734654941906936646576130260972193280317171696418971553954161446191759093719524951116705577362073481319296041201283516154269044389257727700289684119460283480452306204130024913879981135908026983868205969318167819680850998649694416907952712904962404937775789698917207356355227455066183815847669135530549755439819480321732925869069136146085326382334628745456398071603058051634209386708703306545903199608523824513729625136659128221100967735450519952404248198262813831097374261650380017277916975324134846574681307337017380830353680623216336949471306191686438249305686413380231046096450953594089375540285037292470929395114028305547452584962074309438151825437902976012891749355198678420603722034900311364893046495761404333938686140037848030916292543273684533640032637639100774502371542479302473698388692892420946478947733800387782741417786484770190108867879778991633218628640533982619322466154883011452291890252336487236086654396093853898628805813177559162076363154436494477507871294119841637867701722166609831201845484078070518041336869808398454625586921201308185638888082699408686536045192649569198110353659943111802300636106509865023943661829436426563007917282050894429388841748885398290707743052973605359277515749619730823773215894755121761467887865327707115573804264519206349215850195195364813387526811742474131549802130246506341207020335797706780705406945275438806265978516209706795702579244075380490231741030862614968783306207869687868108423639971983209077624758080499988275591392787267627182442892809646874228263172435642368588260139161962836121481966092745325488641054238839295138992979335446110090325230955276870524611359124918392740353154294858383359";
+            BigInteger prime;
+            BigInteger.TryParse(test, NumberStyles.Number, NumberFormatInfo.CurrentInfo, out prime);
+
+            BigInteger group = 2;
+            var bitLength = prime.BitLength;
+
+            BigInteger clientExchangeValue;
+            do
+            {
+                var randomValue = BigInteger.Random(bitLength);
+
+                //clientExchangeValue = BigInteger.ModPow(group, randomValue, prime);
+                clientExchangeValue = (group ^ randomValue) % prime;
+            } while (clientExchangeValue < 1 || clientExchangeValue > (prime - 1));
+        }
+
+        [TestMethod]
+        public void TestClientExhcangeGenerationGroup1()
+        {
+            var test = "00FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE65381FFFFFFFFFFFFFFFF";
+            BigInteger prime;
+            BigInteger.TryParse(test, NumberStyles.AllowHexSpecifier, NumberFormatInfo.CurrentInfo, out prime);
+
+            BigInteger group = 2;
+            var bitLength = prime.BitLength;
+
+            BigInteger clientExchangeValue;
+            do
+            {
+                var randomValue = BigInteger.Random(bitLength);
+
+                //clientExchangeValue = BigInteger.ModPow(group, randomValue, prime);
+                clientExchangeValue = (group ^ randomValue) % prime;
+            } while (clientExchangeValue < 1 || clientExchangeValue > (prime - 1));
+        }
+
+        [TestMethod]
+        public void TestClientExhcangeGenerationGroup14()
+        {
+            var test = "00FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AACAA68FFFFFFFFFFFFFFFF";
+            BigInteger prime;
+            BigInteger.TryParse(test, NumberStyles.AllowHexSpecifier, NumberFormatInfo.CurrentInfo, out prime);
+
+            BigInteger group = 2;
+            var bitLength = prime.BitLength;
+
+            BigInteger clientExchangeValue;
+            do
+            {
+                var randomValue = BigInteger.Random(bitLength);
+
+                //clientExchangeValue = BigInteger.ModPow(group, randomValue, prime);
+                clientExchangeValue = (group ^ randomValue) % prime;
+            } while (clientExchangeValue < 1 || clientExchangeValue > (prime - 1));
         }
 
         private static void AssertEqual(byte[] a, byte[] b)

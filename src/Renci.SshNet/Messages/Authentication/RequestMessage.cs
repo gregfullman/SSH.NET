@@ -1,4 +1,5 @@
 ﻿using System;
+using Renci.SshNet.Common;
 
 namespace Renci.SshNet.Messages.Authentication
 {
@@ -99,6 +100,11 @@ namespace Renci.SshNet.Messages.Authentication
             WriteBinaryString(_userName);
             WriteBinaryString(_serviceName);
             WriteBinaryString(_methodNameBytes);
+        }
+
+        internal override void Process(Session session)
+        {
+            throw new NotImplementedException();
         }
     }
 }

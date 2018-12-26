@@ -13,9 +13,20 @@ namespace Renci.SshNet.Abstractions
 #if FEATURE_THREAD_SLEEP
             System.Threading.Thread.Sleep(millisecondsTimeout);
 #elif FEATURE_THREAD_TAP
-            System.Threading.Tasks.Task.Delay(millisecondsTimeout).Wait();
+            System.Threading.Tasks.Task.Delay(millisecondsTimeout).GetAwaiter().GetResult();
 #else
             #error Suspend of the current thread is not implemented.
+#endif
+        }
+
+        public static void ExecuteThreadLongRunning(Action action)
+        {
+#if FEATURE_THREAD_TAP
+            var taskCreationOptions = System.Threading.Tasks.TaskCreationOptions.LongRunning;
+            System.Threading.Tasks.Task.Factory.StartNew(action, taskCreationOptions);
+#else
+            var thread = new System.Threading.Thread(() => action());
+            thread.Start();
 #endif
         }
 
@@ -25,10 +36,10 @@ namespace Renci.SshNet.Abstractions
         /// <param name="action">The action to execute.</param>
         public static void ExecuteThread(Action action)
         {
+#if FEATURE_THREAD_THREADPOOL
             if (action == null)
                 throw new ArgumentNullException("action");
 
-#if FEATURE_THREAD_THREADPOOL
             System.Threading.ThreadPool.QueueUserWorkItem(o => action());
 #elif FEATURE_THREAD_TAP
             System.Threading.Tasks.Task.Run(action);

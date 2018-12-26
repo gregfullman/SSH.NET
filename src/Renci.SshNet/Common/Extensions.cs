@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+#if !FEATURE_WAITHANDLE_DISPOSE
+using System.Threading;
+#endif // !FEATURE_WAITHANDLE_DISPOSE
 using Renci.SshNet.Abstractions;
-using Renci.SshNet.Common;
 using Renci.SshNet.Messages;
-using Renci.SshNet.Messages.Connection;
 
-namespace Renci.SshNet
+namespace Renci.SshNet.Common
 {
     /// <summary>
     /// Collection of different extension method
@@ -19,30 +19,23 @@ namespace Renci.SshNet
     internal static partial class Extensions
     {
         /// <summary>
-        /// Determines whether [is null or white space] [the specified value].
+        /// Determines whether the specified value is null or white space.
         /// </summary>
         /// <param name="value">The value.</param>
         /// <returns>
-        ///   <c>true</c> if [is null or white space] [the specified value]; otherwise, <c>false</c>.
+        /// <c>true</c> if <paramref name="value"/> is null or white space; otherwise, <c>false</c>.
         /// </returns>
         public static bool IsNullOrWhiteSpace(this string value)
         {
             if (string.IsNullOrEmpty(value)) return true;
 
-            return value.All(char.IsWhiteSpace);
-        }
-
-        internal static byte[] ToArray(this GlobalRequestName globalRequestName)
-        {
-            switch (globalRequestName)
+            for (var i = 0; i < value.Length; i++)
             {
-                case GlobalRequestName.TcpIpForward:
-                    return SshData.Ascii.GetBytes("tcpip-forward");
-                case GlobalRequestName.CancelTcpIpForward:
-                    return SshData.Ascii.GetBytes("cancel-tcpip-forward");
-                default:
-                    throw new NotSupportedException(string.Format("Global request name '{0}' is not supported.", globalRequestName));
+                if (!char.IsWhiteSpace(value[i]))
+                    return false;
             }
+
+            return true;
         }
 
         internal static byte[] ToArray(this ServiceName serviceName)
@@ -69,20 +62,6 @@ namespace Renci.SshNet
                     return ServiceName.Connection;
                 default:
                     throw new NotSupportedException(string.Format("Service name '{0}' is not supported.", sshServiceName));
-            }
-        }
-
-        internal static GlobalRequestName ToGlobalRequestName(this byte[] data)
-        {
-            var sshGlobalRequestName = SshData.Ascii.GetString(data, 0, data.Length);
-            switch (sshGlobalRequestName)
-            {
-                case "tcpip-forward":
-                    return GlobalRequestName.TcpIpForward;
-                case "cancel-tcpip-forward":
-                    return GlobalRequestName.CancelTcpIpForward;
-                default:
-                    throw new NotSupportedException(string.Format("Global request name '{0}' is not supported.", sshGlobalRequestName));
             }
         }
 
@@ -132,70 +111,6 @@ namespace Renci.SshNet
             if (type == null)
                 return null;
             return Activator.CreateInstance(type) as T;
-        }
-
-        /// <summary>
-        /// Returns the specified 16-bit unsigned integer value as an array of bytes.
-        /// </summary>
-        /// <param name="value">The number to convert.</param>
-        /// <returns>An array of bytes with length 2.</returns>
-        internal static byte[] GetBytes(this ushort value)
-        {
-            return new[] {(byte) (value >> 8), (byte) (value & 0xFF)};
-        }
-
-        /// <summary>
-        /// Returns the specified 32-bit unsigned integer value as an array of bytes.
-        /// </summary>
-        /// <param name="value">The number to convert.</param>
-        /// <returns>An array of bytes with length 4.</returns>
-        internal static byte[] GetBytes(this uint value)
-        {
-            var buffer = new byte[4];
-            value.Write(buffer, 0);
-            return buffer;
-        }
-
-        /// <summary>
-        /// Returns the specified 32-bit unsigned integer value as an array of bytes.
-        /// </summary>
-        /// <param name="value">The number to convert.</param>
-        /// <param name="buffer">The array of bytes to write <paramref name="value"/> to.</param>
-        /// <param name="offset">The zero-based offset in <paramref name="buffer"/> at which to begin writing.</param>
-        internal static void Write(this uint value, byte[] buffer, int offset)
-        {
-            buffer[offset++] = (byte) (value >> 24);
-            buffer[offset++] = (byte) (value >> 16);
-            buffer[offset++] = (byte)(value >> 8);
-            buffer[offset] = (byte) (value & 0xFF);
-        }
-
-        /// <summary>
-        /// Returns the specified 64-bit unsigned integer value as an array of bytes.
-        /// </summary>
-        /// <param name="value">The number to convert.</param>
-        /// <returns>An array of bytes with length 8.</returns>
-        internal static byte[] GetBytes(this ulong value)
-        {
-            return new[]
-                {
-                    (byte) (value >> 56), (byte) (value >> 48), (byte) (value >> 40), (byte) (value >> 32),
-                    (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value & 0xFF)
-                };
-        }
-
-        /// <summary>
-        /// Returns the specified 64-bit signed integer value as an array of bytes.
-        /// </summary>
-        /// <param name="value">The number to convert.</param>
-        /// <returns>An array of bytes with length 8.</returns>
-        internal static byte[] GetBytes(this long value)
-        {
-            return new[]
-                {
-                    (byte) (value >> 56), (byte) (value >> 48), (byte) (value >> 40), (byte) (value >> 32),
-                    (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value & 0xFF)
-                };
         }
 
         internal static void ValidatePort(this uint value, string argument)
@@ -355,5 +270,42 @@ namespace Renci.SshNet
         {
             return SocketAbstraction.CanWrite(socket);
         }
+
+        internal static bool IsConnected(this Socket socket)
+        {
+            if (socket == null)
+                return false;
+            return socket.Connected;
+        }
+
+#if !FEATURE_SOCKET_DISPOSE
+        /// <summary>
+        /// Disposes the specified socket.
+        /// </summary>
+        /// <param name="socket">The socket.</param>
+        [DebuggerNonUserCode]
+        internal static void Dispose(this Socket socket)
+        {
+            if (socket == null)
+                throw new NullReferenceException();
+
+            socket.Close();
+        }
+#endif // !FEATURE_SOCKET_DISPOSE
+
+#if !FEATURE_WAITHANDLE_DISPOSE
+        /// <summary>
+        /// Disposes the specified handle.
+        /// </summary>
+        /// <param name="handle">The handle.</param>
+        [DebuggerNonUserCode]
+        internal static void Dispose(this WaitHandle handle)
+        {
+            if (handle == null)
+                throw new NullReferenceException();
+
+            handle.Close();
+        }
+#endif // !FEATURE_WAITHANDLE_DISPOSE
     }
 }

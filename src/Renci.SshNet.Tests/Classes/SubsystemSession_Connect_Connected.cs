@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Renci.SshNet.Channels;
@@ -16,8 +15,7 @@ namespace Renci.SshNet.Tests.Classes
         private Mock<IChannelSession> _channelMock;
         private string _subsystemName;
         private SubsystemSessionStub _subsystemSession;
-        private TimeSpan _operationTimeout;
-        private Encoding _encoding;
+        private int _operationTimeout;
         private IList<EventArgs> _disconnectedRegister;
         private IList<ExceptionEventArgs> _errorOccurredRegister;
         private InvalidOperationException _actualException;
@@ -34,8 +32,7 @@ namespace Renci.SshNet.Tests.Classes
         {
             var random = new Random();
             _subsystemName = random.Next().ToString(CultureInfo.InvariantCulture);
-            _operationTimeout = TimeSpan.FromSeconds(30);
-            _encoding = Encoding.UTF8;
+            _operationTimeout = 30000;
             _disconnectedRegister = new List<EventArgs>();
             _errorOccurredRegister = new List<ExceptionEventArgs>();
 
@@ -48,11 +45,9 @@ namespace Renci.SshNet.Tests.Classes
             _channelMock.InSequence(_sequence).Setup(p => p.SendSubsystemRequest(_subsystemName)).Returns(true);
             _channelMock.InSequence(_sequence).Setup(p => p.IsOpen).Returns(true);
 
-            _subsystemSession = new SubsystemSessionStub(
-                _sessionMock.Object,
-                _subsystemName,
-                _operationTimeout,
-                _encoding);
+            _subsystemSession = new SubsystemSessionStub(_sessionMock.Object,
+                                                         _subsystemName,
+                                                         _operationTimeout);
             _subsystemSession.Disconnected += (sender, args) => _disconnectedRegister.Add(args);
             _subsystemSession.ErrorOccurred += (sender, args) => _errorOccurredRegister.Add(args);
             _subsystemSession.Connect();
@@ -110,12 +105,6 @@ namespace Renci.SshNet.Tests.Classes
             Assert.IsFalse(_subsystemSession.IsOpen);
 
             _channelMock.Verify(p => p.IsOpen, Times.Exactly(2));
-        }
-
-        [TestMethod]
-        public void CloseOnChannelShouldNeverBeInvoked()
-        {
-            _channelMock.Verify(p => p.Close(), Times.Never);
         }
 
         [TestMethod]

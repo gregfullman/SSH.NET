@@ -1,21 +1,31 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Renci.SshNet.Common;
 using Renci.SshNet.Messages.Transport;
+using Renci.SshNet.Tests.Common;
 
 namespace Renci.SshNet.Tests.Classes
 {
     [TestClass]
     public class SessionTest_Connected_ServerSendsBadPacket : SessionTest_ConnectedBase
     {
+        private byte[] _packet;
+
+        protected override void SetupData()
+        {
+            base.SetupData();
+
+            _packet = new byte[] {0x0a, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05};
+        }
+
         protected override void Act()
         {
-            var badPacket = new byte[] { 0x0a, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05 };
-            ServerSocket.Send(badPacket, 0, badPacket.Length, SocketFlags.None);
+            ServerSocket.Send(_packet, 0, _packet.Length, SocketFlags.None);
 
-            // give session some time to react to bad packet
+            // give session some time to process packet
             Thread.Sleep(200);
         }
 
@@ -52,14 +62,14 @@ namespace Renci.SshNet.Tests.Classes
         [TestMethod]
         public void ErrorOccurredIsRaisedOnce()
         {
-            Assert.AreEqual(1, ErrorOccurredRegister.Count);
+            Assert.AreEqual(1, ErrorOccurredRegister.Count, ErrorOccurredRegister.AsString());
 
             var errorOccurred = ErrorOccurredRegister[0];
             Assert.IsNotNull(errorOccurred);
 
             var exception = errorOccurred.Exception;
             Assert.IsNotNull(exception);
-            Assert.AreEqual(typeof (SshConnectionException), exception.GetType());
+            Assert.AreEqual(typeof(SshConnectionException), exception.GetType());
 
             var connectionException = (SshConnectionException) exception;
             Assert.AreEqual(DisconnectReason.ProtocolError, connectionException.DisconnectReason);
@@ -108,7 +118,7 @@ namespace Renci.SshNet.Tests.Classes
         [TestMethod]
         public void ISession_MessageListenerCompletedShouldBeSignaled()
         {
-            var session = (ISession)Session;
+            var session = (ISession) Session;
 
             Assert.IsNotNull(session.MessageListenerCompleted);
             Assert.IsTrue(session.MessageListenerCompleted.WaitOne());
@@ -143,7 +153,7 @@ namespace Renci.SshNet.Tests.Classes
         }
 
         [TestMethod]
-        public void ISession_WaitOnHandleShouldThrowSshConnectionExceptionDetailingBadPacket()
+        public void ISession_WaitOnHandle_WaitHandle_ShouldThrowSshConnectionExceptionDetailingBadPacket()
         {
             var session = (ISession) Session;
             var waitHandle = new ManualResetEvent(false);
@@ -159,6 +169,49 @@ namespace Renci.SshNet.Tests.Classes
                 Assert.IsNull(ex.InnerException);
                 Assert.AreEqual("Bad packet length: 168101125.", ex.Message);
             }
+        }
+
+        [TestMethod]
+        public void ISession_WaitOnHandleAndTimeout_WaitHandle_ShouldThrowSshConnectionExceptionDetailingBadPacket()
+        {
+            var session = (ISession) Session;
+            var waitHandle = new ManualResetEvent(false);
+
+            try
+            {
+                session.WaitOnHandle(waitHandle, Session.InfiniteTimeSpan);
+                Assert.Fail();
+            }
+            catch (SshConnectionException ex)
+            {
+                Assert.AreEqual(DisconnectReason.ProtocolError, ex.DisconnectReason);
+                Assert.IsNull(ex.InnerException);
+                Assert.AreEqual("Bad packet length: 168101125.", ex.Message);
+            }
+        }
+
+        [TestMethod]
+        public void ISession_TryWait_WaitHandleAndTimeout_ShouldReturnDisconnected()
+        {
+            var session = (ISession) Session;
+            var waitHandle = new ManualResetEvent(false);
+
+            var result = session.TryWait(waitHandle, Session.InfiniteTimeSpan);
+
+            Assert.AreEqual(WaitResult.Disconnected, result);
+        }
+
+        [TestMethod]
+        public void ISession_TryWait_WaitHandleAndTimeoutAndException_ShouldReturnDisconnected()
+        {
+            var session = (ISession) Session;
+            var waitHandle = new ManualResetEvent(false);
+            Exception exception;
+
+            var result = session.TryWait(waitHandle, Session.InfiniteTimeSpan, out exception);
+
+            Assert.AreEqual(WaitResult.Disconnected, result);
+            Assert.IsNull(exception);
         }
     }
 }

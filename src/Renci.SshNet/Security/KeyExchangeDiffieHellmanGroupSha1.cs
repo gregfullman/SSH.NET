@@ -1,6 +1,5 @@
 ﻿using System;
 using Renci.SshNet.Common;
-using Renci.SshNet.Messages;
 using Renci.SshNet.Messages.Transport;
 
 namespace Renci.SshNet.Security
@@ -8,7 +7,7 @@ namespace Renci.SshNet.Security
     /// <summary>
     /// Represents "diffie-hellman-group1-sha1" algorithm implementation.
     /// </summary>
-    public abstract class KeyExchangeDiffieHellmanGroupSha1 : KeyExchangeDiffieHellman
+    internal abstract class KeyExchangeDiffieHellmanGroupSha1 : KeyExchangeDiffieHellman
     {
         /// <summary>
         /// Gets the group prime.
@@ -17,6 +16,17 @@ namespace Renci.SshNet.Security
         /// The group prime.
         /// </value>
         public abstract BigInteger GroupPrime { get; }
+
+        /// <summary>
+        /// Gets the size, in bits, of the computed hash code.
+        /// </summary>
+        /// <value>
+        /// The size, in bits, of the computed hash code.
+        /// </value>
+        protected override int HashSize
+        {
+            get { return 160; }
+        }
 
         /// <summary>
         /// Calculates key exchange hash value.
@@ -52,7 +62,7 @@ namespace Renci.SshNet.Security
 
             Session.RegisterMessage("SSH_MSG_KEXDH_REPLY");
 
-            Session.MessageReceived += Session_MessageReceived;
+            Session.KeyExchangeDhReplyMessageReceived += Session_KeyExchangeDhReplyMessageReceived;
 
             _prime = GroupPrime;
             _group = new BigInteger(new byte[] { 2 });
@@ -69,22 +79,20 @@ namespace Renci.SshNet.Security
         {
             base.Finish();
 
-            Session.MessageReceived -= Session_MessageReceived;
+            Session.KeyExchangeDhReplyMessageReceived -= Session_KeyExchangeDhReplyMessageReceived;
         }
 
-        private void Session_MessageReceived(object sender, MessageEventArgs<Message> e)
+        private void Session_KeyExchangeDhReplyMessageReceived(object sender, MessageEventArgs<KeyExchangeDhReplyMessage> e)
         {
-            var message = e.Message as KeyExchangeDhReplyMessage;
-            if (message != null)
-            {
-                //  Unregister message once received
-                Session.UnRegisterMessage("SSH_MSG_KEXDH_REPLY");
+            var message = e.Message;
 
-                HandleServerDhReply(message.HostKey, message.F, message.Signature);
+            //  Unregister message once received
+            Session.UnRegisterMessage("SSH_MSG_KEXDH_REPLY");
 
-                //  When SSH_MSG_KEXDH_REPLY received key exchange is completed
-                Finish();
-            }
+            HandleServerDhReply(message.HostKey, message.F, message.Signature);
+
+            //  When SSH_MSG_KEXDH_REPLY received key exchange is completed
+            Finish();
         }
 
         private class _ExchangeHashData : SshData

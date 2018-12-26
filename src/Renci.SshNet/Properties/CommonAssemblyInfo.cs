@@ -5,13 +5,13 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("SSH.NET is a Secure Shell (SSH) library for .NET, optimized for parallelism.")]
 [assembly: AssemblyCompany("Renci")]
 [assembly: AssemblyProduct("SSH.NET")]
-[assembly: AssemblyCopyright("Copyright © Renci 2010-2016")]
+[assembly: AssemblyCopyright("Copyright © Renci 2010-2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
-[assembly: AssemblyVersion("2016.0.0")]
-[assembly: AssemblyFileVersion("2016.0.0")]
-[assembly: AssemblyInformationalVersion("2016.0.0-beta3")]
+[assembly: AssemblyVersion("2017.0.0")]
+[assembly: AssemblyFileVersion("2017.0.0")]
+[assembly: AssemblyInformationalVersion("2017.0.0-beta1")]
 [assembly: CLSCompliant(false)]
 
 // Setting ComVisible to false makes the types in this assembly not visible 

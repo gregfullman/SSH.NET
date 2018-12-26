@@ -71,8 +71,6 @@ namespace Renci.SshNet
         /// </summary>
         public virtual void Stop()
         {
-            CheckDisposed();
-
             if (IsStarted)
             {
                 StopPort(Session.ConnectionInfo.Timeout);
@@ -124,7 +122,7 @@ namespace Renci.SshNet
         protected abstract void CheckDisposed();
 
         /// <summary>
-        /// Raises <see cref="Renci.SshNet.ForwardedPort.Exception"/> event.
+        /// Raises <see cref="Exception"/> event.
         /// </summary>
         /// <param name="exception">The exception.</param>
         protected void RaiseExceptionEvent(Exception exception)
@@ -137,7 +135,7 @@ namespace Renci.SshNet
         }
 
         /// <summary>
-        /// Raises <see cref="Renci.SshNet.ForwardedPort.RequestReceived"/> event.
+        /// Raises <see cref="RequestReceived"/> event.
         /// </summary>
         /// <param name="host">Request originator host.</param>
         /// <param name="port">Request originator port.</param>

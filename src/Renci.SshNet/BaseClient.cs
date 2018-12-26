@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Threading;
+using Renci.SshNet.Abstractions;
 using Renci.SshNet.Common;
 using Renci.SshNet.Messages.Transport;
 
@@ -73,7 +74,8 @@ namespace Renci.SshNet
             get
             {
                 CheckDisposed();
-                return Session != null && Session.IsConnected;
+
+                return IsSessionConnected();
             }
         }
 
@@ -106,13 +108,25 @@ namespace Renci.SshNet
                 }
                 else
                 {
-                    // change the due time and interval of the timer if has already
-                    // been created (which means the client is connected)
-                    // 
-                    // if the client is not yet connected, then the timer will be
-                    // created with the new interval when Connect() is invoked
                     if (_keepAliveTimer != null)
+                    {
+                        // change the due time and interval of the timer if has already
+                        // been created (which means the client is connected)
+
                         _keepAliveTimer.Change(value, value);
+                    }
+                    else if (IsSessionConnected())
+                    {
+                        // if timer has not yet been created and the client is already connected,
+                        // then we need to create the timer now
+                        //
+                        // this means that - before connecting - the keep-alive interval was set to
+                        // negative one (-1) and as such we did not create the timer
+                        _keepAliveTimer = CreateKeepAliveTimer(value, value);
+                    }
+
+                    // note that if the client is not yet connected, then the timer will be created with the 
+                    // new interval when Connect() is invoked
                 }
                 _keepAliveInterval = value;
             }
@@ -203,16 +217,26 @@ namespace Renci.SshNet
             // forwarded port with a client instead of with a session
             //
             // To be discussed with Oleg (or whoever is interested)
-            if (Session != null && Session.IsConnected)
+            if (IsSessionConnected())
                 throw new InvalidOperationException("The client is already connected.");
 
             OnConnecting();
-            Session = _serviceFactory.CreateSession(ConnectionInfo);
-            Session.HostKeyReceived += Session_HostKeyReceived;
-            Session.ErrorOccured += Session_ErrorOccured;
-            Session.Connect();
+
+            Session = CreateAndConnectSession();
+            try
+            {
+                // Even though the method we invoke makes you believe otherwise, at this point only
+                // the SSH session itself is connected.
+                OnConnected();
+            }
+            catch
+            {
+                // Only dispose the session as Disconnect() would have side-effects (such as remove forwarded
+                // ports in SshClient).
+                DisposeSession();
+                throw;
+            }
             StartKeepAliveTimer();
-            OnConnected();
         }
 
         /// <summary>
@@ -221,25 +245,17 @@ namespace Renci.SshNet
         /// <exception cref="ObjectDisposedException">The method was called after the client was disposed.</exception>
         public void Disconnect()
         {
+            DiagnosticAbstraction.Log("Disconnecting client.");
+
             CheckDisposed();
 
             OnDisconnecting();
 
-            // stop sending keep-alive messages before we close the
-            // session
+            // stop sending keep-alive messages before we close the session
             StopKeepAliveTimer();
 
-            // disconnect and dispose the SSH session
-            if (Session != null)
-            {
-                // a new session is created in Connect(), so we should dispose and
-                // dereference the current session here
-                Session.ErrorOccured -= Session_ErrorOccured;
-                Session.HostKeyReceived -= Session_HostKeyReceived;
-                Session.Disconnect();
-                Session.Dispose();
-                Session = null;
-            }
+            // dispose the SSH session
+            DisposeSession();
 
             OnDisconnected();
         }
@@ -279,8 +295,11 @@ namespace Renci.SshNet
         /// </summary>
         protected virtual void OnDisconnecting()
         {
-            if (Session != null)
-                Session.OnDisconnecting();
+            var session = Session;
+            if (session != null)
+            {
+                session.OnDisconnecting();
+            }
         }
 
         /// <summary>
@@ -317,6 +336,8 @@ namespace Renci.SshNet
         /// </summary>
         public void Dispose()
         {
+            DiagnosticAbstraction.Log("Disposing client.");
+
             Dispose(true);
             GC.SuppressFinalize(this);
         }
@@ -382,8 +403,10 @@ namespace Renci.SshNet
 
         private void SendKeepAliveMessage()
         {
+            var session = Session;
+
             // do nothing if we have disposed or disconnected
-            if (Session == null)
+            if (session == null)
                 return;
 
             // do not send multiple keep-alive messages concurrently
@@ -391,7 +414,7 @@ namespace Renci.SshNet
             {
                 try
                 {
-                    Session.TrySendMessage(new IgnoreMessage());
+                    session.TrySendMessage(new IgnoreMessage());
                 }
                 finally
                 {
@@ -416,7 +439,70 @@ namespace Renci.SshNet
                 // timer is already started
                 return;
 
-            _keepAliveTimer = new Timer(state => SendKeepAliveMessage(), null, _keepAliveInterval, _keepAliveInterval);
+            _keepAliveTimer = CreateKeepAliveTimer(_keepAliveInterval, _keepAliveInterval);
+        }
+
+        /// <summary>
+        /// Creates a <see cref="Timer"/> with the specified due time and interval.
+        /// </summary>
+        /// <param name="dueTime">The amount of time to delay before the keep-alive message is first sent. Specify negative one (-1) milliseconds to prevent the timer from starting. Specify zero (0) to start the timer immediately.</param>
+        /// <param name="period">The time interval between attempts to send a keep-alive message. Specify negative one (-1) milliseconds to disable periodic signaling.</param>
+        /// <returns>
+        /// A <see cref="Timer"/> with the specified due time and interval.
+        /// </returns>
+        private Timer CreateKeepAliveTimer(TimeSpan dueTime, TimeSpan period)
+        {
+            return new Timer(state => SendKeepAliveMessage(), Session, dueTime, period);
+        }
+
+        private ISession CreateAndConnectSession()
+        {
+            var session = _serviceFactory.CreateSession(ConnectionInfo);
+            session.HostKeyReceived += Session_HostKeyReceived;
+            session.ErrorOccured += Session_ErrorOccured;
+
+            try
+            {
+                session.Connect();
+                return session;
+            }
+            catch
+            {
+                DisposeSession(session);
+                throw;
+            }
+        }
+
+        private void DisposeSession(ISession session)
+        {
+            session.ErrorOccured -= Session_ErrorOccured;
+            session.HostKeyReceived -= Session_HostKeyReceived;
+            session.Dispose();
+        }
+
+        /// <summary>
+        /// Disposes the SSH session, and assigns <c>null</c> to <see cref="Session"/>.
+        /// </summary>
+        private void DisposeSession()
+        {
+            var session = Session;
+            if (session != null)
+            {
+                Session = null;
+                DisposeSession(session);
+            }
+        }
+
+        /// <summary>
+        /// Returns a value indicating whether the SSH session is established.
+        /// </summary>
+        /// <returns>
+        /// <c>true</c> if the SSH session is established; otherwise, <c>false</c>.
+        /// </returns>
+        private bool IsSessionConnected()
+        {
+            var session = Session;
+            return session != null && session.IsConnected;
         }
     }
 }

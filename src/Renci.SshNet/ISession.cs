@@ -142,6 +142,44 @@ namespace Renci.SshNet
         void WaitOnHandle(WaitHandle waitHandle);
 
         /// <summary>
+        /// Waits for the specified handle or the exception handle for the receive thread
+        /// to signal within the specified timeout.
+        /// </summary>
+        /// <param name="waitHandle">The wait handle.</param>
+        /// <param name="timeout">The time to wait for any of the handles to become signaled.</param>
+        /// <exception cref="SshConnectionException">A received package was invalid or failed the message integrity check.</exception>
+        /// <exception cref="SshOperationTimeoutException">None of the handles are signaled in time and the session is not disconnecting.</exception>
+        /// <exception cref="SocketException">A socket error was signaled while receiving messages from the server.</exception>
+        /// <remarks>
+        /// When neither handles are signaled in time and the session is not closing, then the
+        /// session is disconnected.
+        /// </remarks>
+        void WaitOnHandle(WaitHandle waitHandle, TimeSpan timeout);
+
+        /// <summary>
+        /// Waits for the specified <seec ref="WaitHandle"/> to receive a signal, using a <see cref="TimeSpan"/>
+        /// to specify the time interval.
+        /// </summary>
+        /// <param name="waitHandle">The <see cref="WaitHandle"/> that should be signaled.</param>
+        /// <param name="timeout">A <see cref="TimeSpan"/> that represents the number of milliseconds to wait, or a <see cref="TimeSpan"/> that represents <c>-1</c> milliseconds to wait indefinitely.</param>
+        /// <param name="exception">When this method returns <see cref="WaitResult.Failed"/>, contains the <see cref="Exception"/>.</param>
+        /// <returns>
+        /// A <see cref="WaitResult"/>.
+        /// </returns>
+        WaitResult TryWait(WaitHandle waitHandle, TimeSpan timeout, out Exception exception);
+
+        /// <summary>
+        /// Waits for the specified <seec ref="WaitHandle"/> to receive a signal, using a <see cref="TimeSpan"/>
+        /// to specify the time interval.
+        /// </summary>
+        /// <param name="waitHandle">The <see cref="WaitHandle"/> that should be signaled.</param>
+        /// <param name="timeout">A <see cref="TimeSpan"/> that represents the number of milliseconds to wait, or a <see cref="TimeSpan"/> that represents <c>-1</c> milliseconds to wait indefinitely.</param>
+        /// <returns>
+        /// A <see cref="WaitResult"/>.
+        /// </returns>
+        WaitResult TryWait(WaitHandle waitHandle, TimeSpan timeout);
+
+        /// <summary>
         /// Occurs when <see cref="ChannelCloseMessage"/> message received
         /// </summary>
         event EventHandler<MessageEventArgs<ChannelCloseMessage>> ChannelCloseReceived;

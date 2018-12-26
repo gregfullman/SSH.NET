@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Renci.SshNet.Channels;
 using Renci.SshNet.Common;
+using Renci.SshNet.Tests.Common;
 
 namespace Renci.SshNet.Tests.Classes
 {
@@ -16,8 +16,7 @@ namespace Renci.SshNet.Tests.Classes
         private Mock<IChannelSession> _channelMock;
         private string _subsystemName;
         private SubsystemSessionStub _subsystemSession;
-        private TimeSpan _operationTimeout;
-        private Encoding _encoding;
+        private int _operationTimeout;
         private IList<EventArgs> _disconnectedRegister;
         private IList<ExceptionEventArgs> _errorOccurredRegister;
         private ChannelDataEventArgs _channelDataEventArgs;
@@ -34,8 +33,7 @@ namespace Renci.SshNet.Tests.Classes
         {
             var random = new Random();
             _subsystemName = random.Next().ToString(CultureInfo.InvariantCulture);
-            _operationTimeout = TimeSpan.FromSeconds(30);
-            _encoding = Encoding.UTF8;
+            _operationTimeout = 30000;
             _disconnectedRegister = new List<EventArgs>();
             _errorOccurredRegister = new List<ExceptionEventArgs>();
             _channelDataEventArgs = new ChannelDataEventArgs(
@@ -54,8 +52,7 @@ namespace Renci.SshNet.Tests.Classes
             _subsystemSession = new SubsystemSessionStub(
                 _sessionMock.Object,
                 _subsystemName,
-                _operationTimeout,
-                _encoding);
+                _operationTimeout);
             _subsystemSession.Disconnected += (sender, args) => _disconnectedRegister.Add(args);
             _subsystemSession.ErrorOccurred += (sender, args) => _errorOccurredRegister.Add(args);
             _subsystemSession.OnDataReceivedException = _onDataReceivedException;
@@ -76,8 +73,8 @@ namespace Renci.SshNet.Tests.Classes
         [TestMethod]
         public void ErrorOccurredHaveFiredOnce()
         {
-            Assert.AreEqual(1, _errorOccurredRegister.Count);
-            Assert.AreSame(_onDataReceivedException, _errorOccurredRegister[0].Exception);
+            Assert.AreEqual(1, _errorOccurredRegister.Count, _errorOccurredRegister.AsString());
+            Assert.AreSame(_onDataReceivedException, _errorOccurredRegister[0].Exception, _errorOccurredRegister.AsString());
         }
 
         [TestMethod]

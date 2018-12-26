@@ -13,6 +13,8 @@ namespace Renci.SshNet
     /// </summary>
     public class NetConfClient : BaseClient
     {
+        private int _operationTimeout;
+
         /// <summary>
         /// Holds <see cref="INetConfSession"/> instance that used to communicate to the server
         /// </summary>
@@ -25,7 +27,29 @@ namespace Renci.SshNet
         /// The timeout to wait until an operation completes. The default value is negative
         /// one (-1) milliseconds, which indicates an infinite time-out period.
         /// </value>
-        public TimeSpan OperationTimeout { get; set; }
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> represents a value that is less than -1 or greater than <see cref="Int32.MaxValue"/> milliseconds.</exception>
+        public TimeSpan OperationTimeout {
+            get { return TimeSpan.FromMilliseconds(_operationTimeout); }
+            set
+            {
+                var timeoutInMilliseconds = value.TotalMilliseconds;
+                if (timeoutInMilliseconds < -1d || timeoutInMilliseconds > int.MaxValue)
+                    throw new ArgumentOutOfRangeException("value", "The timeout must represent a value between -1 and Int32.MaxValue, inclusive.");
+
+                _operationTimeout = (int) timeoutInMilliseconds;
+            }
+        }
+
+        /// <summary>
+        /// Gets the current NetConf session.
+        /// </summary>
+        /// <value>
+        /// The current NetConf session.
+        /// </value>
+        internal INetConfSession NetConfSession
+        {
+            get { return _netConfSession; }
+        }
 
         #region Constructors
 
@@ -127,7 +151,7 @@ namespace Renci.SshNet
         internal NetConfClient(ConnectionInfo connectionInfo, bool ownsConnectionInfo, IServiceFactory serviceFactory)
             : base(connectionInfo, ownsConnectionInfo, serviceFactory)
         {
-            OperationTimeout = SshNet.Session.InfiniteTimeSpan;
+            _operationTimeout = SshNet.Session.Infinite;
             AutomaticMessageIdHandling = true;
         }
 
@@ -207,8 +231,7 @@ namespace Renci.SshNet
         {
             base.OnConnected();
 
-            _netConfSession = ServiceFactory.CreateNetConfSession(Session, OperationTimeout);
-            _netConfSession.Connect();
+            _netConfSession = CreateAndConnectNetConfSession();
         }
 
         /// <summary>
@@ -236,6 +259,21 @@ namespace Renci.SshNet
                     _netConfSession.Dispose();
                     _netConfSession = null;
                 }
+            }
+        }
+
+        private INetConfSession CreateAndConnectNetConfSession()
+        {
+            var netConfSession = ServiceFactory.CreateNetConfSession(Session, _operationTimeout);
+            try
+            {
+                netConfSession.Connect();
+                return netConfSession;
+            }
+            catch
+            {
+                netConfSession.Dispose();
+                throw;
             }
         }
     }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using Renci.SshNet.Common;
@@ -12,14 +11,20 @@ namespace Renci.SshNet.Sftp
 {
     internal class SftpSession : SubsystemSession, ISftpSession
     {
-        private const int MaximumSupportedVersion = 3;
+        internal const int MaximumSupportedVersion = 3;
         private const int MinimumSupportedVersion = 0;
 
         private readonly Dictionary<uint, SftpRequest> _requests = new Dictionary<uint, SftpRequest>();
+        private readonly ISftpResponseFactory _sftpResponseFactory;
         //FIXME: obtain from SftpClient!
         private readonly List<byte> _data = new List<byte>(32 * 1024);
         private EventWaitHandle _sftpVersionConfirmed = new AutoResetEvent(false);
         private IDictionary<string, string> _supportedExtensions;
+
+        /// <summary>
+        /// Gets the character encoding to use.
+        /// </summary>
+        protected Encoding Encoding { get; private set; }
 
         /// <summary>
         /// Gets the remote working directory.
@@ -38,6 +43,7 @@ namespace Renci.SshNet.Sftp
         public uint ProtocolVersion { get; private set; }
 
         private long _requestId;
+
         /// <summary>
         /// Gets the next request id for sftp session.
         /// </summary>
@@ -49,9 +55,11 @@ namespace Renci.SshNet.Sftp
             }
         }
 
-        public SftpSession(ISession session, TimeSpan operationTimeout, Encoding encoding)
-            : base(session, "sftp", operationTimeout, encoding)
+        public SftpSession(ISession session, int operationTimeout, Encoding encoding, ISftpResponseFactory sftpResponseFactory)
+            : base(session, "sftp", operationTimeout)
         {
+            Encoding = encoding;
+            _sftpResponseFactory = sftpResponseFactory;
         }
 
         /// <summary>
@@ -90,7 +98,7 @@ namespace Renci.SshNet.Sftp
 
             if (realPathFiles != null)
             {
-                canonizedPath = realPathFiles.First().Key;
+                canonizedPath = realPathFiles[0].Key;
             }
 
             if (!string.IsNullOrEmpty(canonizedPath))
@@ -114,7 +122,7 @@ namespace Renci.SshNet.Sftp
 
             if (realPathFiles != null)
             {
-                canonizedPath = realPathFiles.First().Key;
+                canonizedPath = realPathFiles[0].Key;
             }
 
             if (string.IsNullOrEmpty(canonizedPath))
@@ -126,6 +134,11 @@ namespace Renci.SshNet.Sftp
             if (canonizedPath[canonizedPath.Length - 1] != '/')
                 slash = "/";
             return string.Format(CultureInfo.InvariantCulture, "{0}{1}{2}", canonizedPath, slash, pathParts[pathParts.Length - 1]);
+        }
+
+        public ISftpFileReader CreateFileReader(byte[] handle, ISftpSession sftpSession, uint chunkSize, int maxPendingReads, long? fileSize)
+        {
+            return new SftpFileReader(handle, sftpSession, chunkSize, maxPendingReads, fileSize);
         }
 
         internal string GetFullRemotePath(string path)
@@ -158,60 +171,151 @@ namespace Renci.SshNet.Sftp
             }
 
             //  Resolve current directory
-            WorkingDirectory = RequestRealPath(".").First().Key;
+            WorkingDirectory = RequestRealPath(".")[0].Key;
         }
 
         protected override void OnDataReceived(byte[] data)
         {
-            //  Add channel data to internal data holder
-            _data.AddRange(data);
+            const int packetLengthByteCount = 4;
+            const int sftpMessageTypeByteCount = 1;
+            const int minimumChannelDataLength = packetLengthByteCount + sftpMessageTypeByteCount;
 
-            while (_data.Count > 4 + 1)
+            var offset = 0;
+            var count = data.Length;
+
+            // improve performance and reduce GC pressure by not buffering channel data if the received
+            // chunk contains the complete packet data.
+            //
+            // for this, the buffer should be empty and the chunk should contain at least the packet length
+            // and the type of the SFTP message
+            if (_data.Count == 0)
             {
-                //  Extract packet length
-                var packetLength = (_data[0] << 24 | _data[1] << 16 | _data[2] << 8 | _data[3]);
-
-                //  Check if complete packet data is available
-                if (_data.Count < packetLength + 4)
+                while (count >= minimumChannelDataLength)
                 {
-                    //  Wait for complete message to arrive first
-                    break;
-                }
+                    // extract packet length
+                    var packetDataLength = data[offset] << 24 | data[offset + 1] << 16 | data[offset + 2] << 8 |
+                                           data[offset + 3];
 
-                var packetLengthIncludingBytesForLength = packetLength + 4;
+                    var packetTotalLength = packetDataLength + packetLengthByteCount;
 
-                //  Create buffer to hold packet data and 4 bytes for packet length
-                var packetData = new byte[packetLengthIncludingBytesForLength];
-
-                // copy packet data and bytes for length to array
-                _data.CopyTo(0, packetData, 0, packetLengthIncludingBytesForLength);
-
-                //  Remove loaded data and bytes for length from _data holder
-                _data.RemoveRange(0, packetLengthIncludingBytesForLength);
-
-                //  Load SFTP Message and handle it
-                var response = SftpMessage.Load(ProtocolVersion, packetData, Encoding);
-
-                try
-                {
-                    var versionResponse = response as SftpVersionResponse;
-                    if (versionResponse != null)
+                    // check if complete packet data (or more) is available
+                    if (count >= packetTotalLength)
                     {
-                        ProtocolVersion = versionResponse.Version;
-                        _supportedExtensions = versionResponse.Extentions;
+                        // load and process SFTP message
+                        if (!TryLoadSftpMessage(data, offset + packetLengthByteCount, packetDataLength))
+                        {
+                            return;
+                        }
 
-                        _sftpVersionConfirmed.Set();
+                        // remove processed bytes from the number of bytes to process as the channel
+                        // data we received may contain (part of) another message
+                        count -= packetTotalLength;
+
+                        // move offset beyond bytes we just processed
+                        offset += packetTotalLength;
                     }
                     else
                     {
-                        HandleResponse(response as SftpResponse);
+                        // we don't have a complete message
+                        break;
                     }
                 }
-                catch (Exception exp)
+
+                // check if there is channel data left to process or buffer
+                if (count == 0)
                 {
-                    RaiseError(exp);
+                    return;
+                }
+
+                // check if we processed part of the channel data we received
+                if (offset > 0)
+                {
+                    // add (remaining) channel data to internal data holder
+                    var remainingChannelData = new byte[count];
+                    Buffer.BlockCopy(data, offset, remainingChannelData, 0, count);
+                    _data.AddRange(remainingChannelData);
+                }
+                else
+                {
+                    // add (remaining) channel data to internal data holder
+                    _data.AddRange(data);
+                }
+
+                // skip further processing as we'll need a new chunk to complete the message
+                return;
+            }
+
+            // add (remaining) channel data to internal data holder
+            _data.AddRange(data);
+
+            while (_data.Count >= minimumChannelDataLength)
+            {
+                // extract packet length
+                var packetDataLength = _data[0] << 24 | _data[1] << 16 | _data[2] << 8 | _data[3];
+
+                var packetTotalLength = packetDataLength + packetLengthByteCount;
+
+                // check if complete packet data is available
+                if (_data.Count < packetTotalLength)
+                {
+                    // wait for complete message to arrive first
                     break;
                 }
+
+                // create buffer to hold packet data
+                var packetData = new byte[packetDataLength];
+
+                // copy packet data and bytes for length to array
+                _data.CopyTo(packetLengthByteCount, packetData, 0, packetDataLength);
+
+                // remove loaded data and bytes for length from _data holder
+                if (_data.Count == packetTotalLength)
+                {
+                    // the only buffered data is the data we're processing
+                    _data.Clear();
+                }
+                else
+                {
+                    // remove only the data we're processing
+                    _data.RemoveRange(0, packetTotalLength);
+                }
+
+                // load and process SFTP message
+                if (!TryLoadSftpMessage(packetData, 0, packetDataLength))
+                {
+                    break;
+                }
+            }
+        }
+
+        private bool TryLoadSftpMessage(byte[] packetData, int offset, int count)
+        {
+            // Create SFTP message
+            var response = _sftpResponseFactory.Create(ProtocolVersion, packetData[offset], Encoding);
+            // Load message data into it
+            response.Load(packetData, offset + 1, count - 1);
+
+            try
+            {
+                var versionResponse = response as SftpVersionResponse;
+                if (versionResponse != null)
+                {
+                    ProtocolVersion = versionResponse.Version;
+                    _supportedExtensions = versionResponse.Extentions;
+
+                    _sftpVersionConfirmed.Set();
+                }
+                else
+                {
+                    HandleResponse(response as SftpResponse);
+                }
+
+                return true;
+            }
+            catch (Exception exp)
+            {
+                RaiseError(exp);
+                return false;
             }
         }
 
@@ -221,10 +325,11 @@ namespace Renci.SshNet.Sftp
 
             if (disposing)
             {
-                if (_sftpVersionConfirmed != null)
+                var sftpVersionConfirmed = _sftpVersionConfirmed;
+                if (sftpVersionConfirmed != null)
                 {
-                    _sftpVersionConfirmed.Dispose();
                     _sftpVersionConfirmed = null;
+                    sftpVersionConfirmed.Dispose();
                 }
             }
         }
@@ -281,6 +386,65 @@ namespace Renci.SshNet.Sftp
         }
 
         /// <summary>
+        /// Performs SSH_FXP_OPEN request
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="flags">The flags.</param>
+        /// <param name="callback">The <see cref="AsyncCallback"/> delegate that is executed when <see cref="BeginOpen(string, Flags, AsyncCallback, object)"/> completes.</param>
+        /// <param name="state">An object that contains any additional user-defined data.</param>
+        /// <returns>
+        /// A <see cref="SftpOpenAsyncResult"/> that represents the asynchronous call.
+        /// </returns>
+        public SftpOpenAsyncResult BeginOpen(string path, Flags flags, AsyncCallback callback, object state)
+        {
+            var asyncResult = new SftpOpenAsyncResult(callback, state);
+
+            var request = new SftpOpenRequest(ProtocolVersion, NextRequestId, path, Encoding, flags,
+                response =>
+                {
+                    asyncResult.SetAsCompleted(response.Handle, false);
+                },
+                response =>
+                {
+                    asyncResult.SetAsCompleted(GetSftpException(response), false);
+                });
+
+            SendRequest(request);
+
+            return asyncResult;
+        }
+
+        /// <summary>
+        /// Handles the end of an asynchronous open.
+        /// </summary>
+        /// <param name="asyncResult">An <see cref="SftpOpenAsyncResult"/> that represents an asynchronous call.</param>
+        /// <returns>
+        /// A <see cref="byte"/> array representing a file handle.
+        /// </returns>
+        /// <remarks>
+        /// If all available data has been read, the <see cref="EndOpen(SftpOpenAsyncResult)"/> method completes
+        /// immediately and returns zero bytes.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncResult"/> is <c>null</c>.</exception>
+        public byte[] EndOpen(SftpOpenAsyncResult asyncResult)
+        {
+            if (asyncResult == null)
+                throw new ArgumentNullException("asyncResult");
+
+            if (asyncResult.EndInvokeCalled)
+                throw new InvalidOperationException("EndOpen has already been called.");
+
+            if (asyncResult.IsCompleted)
+                return asyncResult.EndInvoke();
+
+            using (var waitHandle = asyncResult.AsyncWaitHandle)
+            {
+                WaitOnHandle(waitHandle, OperationTimeout);
+                return asyncResult.EndInvoke();
+            }
+        }
+
+        /// <summary>
         /// Performs SSH_FXP_CLOSE request.
         /// </summary>
         /// <param name="handle">The handle.</param>
@@ -305,6 +469,122 @@ namespace Renci.SshNet.Sftp
             if (exception != null)
             {
                 throw exception;
+            }
+        }
+
+        /// <summary>
+        /// Performs SSH_FXP_CLOSE request.
+        /// </summary>
+        /// <param name="handle">The handle.</param>
+        /// <param name="callback">The <see cref="AsyncCallback"/> delegate that is executed when <see cref="BeginClose(byte[], AsyncCallback, object)"/> completes.</param>
+        /// <param name="state">An object that contains any additional user-defined data.</param>
+        /// <returns>
+        /// A <see cref="SftpCloseAsyncResult"/> that represents the asynchronous call.
+        /// </returns>
+        public SftpCloseAsyncResult BeginClose(byte[] handle, AsyncCallback callback, object state)
+        {
+            var asyncResult = new SftpCloseAsyncResult(callback, state);
+
+            var request = new SftpCloseRequest(ProtocolVersion, NextRequestId, handle,
+                response =>
+                {
+                    asyncResult.SetAsCompleted(GetSftpException(response), false);
+                });
+            SendRequest(request);
+
+            return asyncResult;
+        }
+
+        /// <summary>
+        /// Handles the end of an asynchronous close.
+        /// </summary>
+        /// <param name="asyncResult">An <see cref="SftpCloseAsyncResult"/> that represents an asynchronous call.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncResult"/> is <c>null</c>.</exception>
+        public void EndClose(SftpCloseAsyncResult asyncResult)
+        {
+            if (asyncResult == null)
+                throw new ArgumentNullException("asyncResult");
+
+            if (asyncResult.EndInvokeCalled)
+                throw new InvalidOperationException("EndClose has already been called.");
+
+            if (asyncResult.IsCompleted)
+            {
+                asyncResult.EndInvoke();
+            }
+            else
+            {
+                using (var waitHandle = asyncResult.AsyncWaitHandle)
+                {
+                    WaitOnHandle(waitHandle, OperationTimeout);
+                    asyncResult.EndInvoke();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Begins an asynchronous read using a SSH_FXP_READ request.
+        /// </summary>
+        /// <param name="handle">The handle to the file to read from.</param>
+        /// <param name="offset">The offset in the file to start reading from.</param>
+        /// <param name="length">The number of bytes to read.</param>
+        /// <param name="callback">The <see cref="AsyncCallback"/> delegate that is executed when <see cref="BeginRead(byte[], ulong, uint, AsyncCallback, object)"/> completes.</param>
+        /// <param name="state">An object that contains any additional user-defined data.</param>
+        /// <returns>
+        /// A <see cref="SftpReadAsyncResult"/> that represents the asynchronous call.
+        /// </returns>
+        public SftpReadAsyncResult BeginRead(byte[] handle, ulong offset, uint length, AsyncCallback callback, object state)
+        {
+            var asyncResult = new SftpReadAsyncResult(callback, state);
+
+            var request = new SftpReadRequest(ProtocolVersion, NextRequestId, handle, offset, length,
+                response =>
+                {
+                    asyncResult.SetAsCompleted(response.Data, false);
+                },
+                response =>
+                {
+                    if (response.StatusCode != StatusCodes.Eof)
+                    {
+                        asyncResult.SetAsCompleted(GetSftpException(response), false);
+                    }
+                    else
+                    {
+                        asyncResult.SetAsCompleted(Array<byte>.Empty, false);
+                    }
+                });
+            SendRequest(request);
+
+            return asyncResult;
+        }
+
+        /// <summary>
+        /// Handles the end of an asynchronous read.
+        /// </summary>
+        /// <param name="asyncResult">An <see cref="SftpReadAsyncResult"/> that represents an asynchronous call.</param>
+        /// <returns>
+        /// A <see cref="byte"/> array representing the data read.
+        /// </returns>
+        /// <remarks>
+        /// If all available data has been read, the <see cref="EndRead(SftpReadAsyncResult)"/> method completes
+        /// immediately and returns zero bytes.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncResult"/> is <c>null</c>.</exception>
+        public byte[] EndRead(SftpReadAsyncResult asyncResult)
+        {
+            if (asyncResult == null)
+                throw new ArgumentNullException("asyncResult");
+
+            if (asyncResult.EndInvokeCalled)
+                throw new InvalidOperationException("EndRead has already been called.");
+
+            if (asyncResult.IsCompleted)
+                return asyncResult.EndInvoke();
+
+            using (var waitHandle = asyncResult.AsyncWaitHandle)
+            {
+                WaitOnHandle(waitHandle, OperationTimeout);
+                return asyncResult.EndInvoke();
             }
         }
 
@@ -335,7 +615,10 @@ namespace Renci.SshNet.Sftp
                             {
                                 exception = GetSftpException(response);
                             }
-                            data = Array<byte>.Empty;
+                            else
+                            {
+                                data = Array<byte>.Empty;
+                            }
                             wait.Set();
                         });
 
@@ -356,22 +639,24 @@ namespace Renci.SshNet.Sftp
         /// Performs SSH_FXP_WRITE request.
         /// </summary>
         /// <param name="handle">The handle.</param>
-        /// <param name="offset">The offset.</param>
-        /// <param name="data">The data to send.</param>
-        /// <param name="length">The number of bytes of <paramref name="data"/> to send.</param>
+        /// <param name="serverOffset">The the zero-based offset (in bytes) relative to the beginning of the file that the write must start at.</param>
+        /// <param name="data">The buffer holding the data to write.</param>
+        /// <param name="offset">the zero-based offset in <paramref name="data" /> at which to begin taking bytes to write.</param>
+        /// <param name="length">The length (in bytes) of the data to write.</param>
         /// <param name="wait">The wait event handle if needed.</param>
         /// <param name="writeCompleted">The callback to invoke when the write has completed.</param>
         public void RequestWrite(byte[] handle,
-                                 ulong offset,
+                                 ulong serverOffset,
                                  byte[] data,
+                                 int offset,
                                  int length,
                                  AutoResetEvent wait,
                                  Action<SftpStatusResponse> writeCompleted = null)
         {
             SshException exception = null;
 
-            var request = new SftpWriteRequest(ProtocolVersion, NextRequestId, handle, offset, data, length,
-                response =>
+            var request = new SftpWriteRequest(ProtocolVersion, NextRequestId, handle, serverOffset, data, offset,
+                length, response =>
                     {
                         if (writeCompleted != null)
                         {
@@ -434,13 +719,67 @@ namespace Renci.SshNet.Sftp
         }
 
         /// <summary>
+        /// Performs SSH_FXP_LSTAT request.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="callback">The <see cref="AsyncCallback"/> delegate that is executed when <see cref="BeginLStat(string, AsyncCallback, object)"/> completes.</param>
+        /// <param name="state">An object that contains any additional user-defined data.</param>
+        /// <returns>
+        /// A <see cref="SFtpStatAsyncResult"/> that represents the asynchronous call.
+        /// </returns>
+        public SFtpStatAsyncResult BeginLStat(string path, AsyncCallback callback, object state)
+        {
+            var asyncResult = new SFtpStatAsyncResult(callback, state);
+
+            var request = new SftpLStatRequest(ProtocolVersion, NextRequestId, path, Encoding,
+                response =>
+                {
+                    asyncResult.SetAsCompleted(response.Attributes, false);
+                },
+                response =>
+                {
+                    asyncResult.SetAsCompleted(GetSftpException(response), false);
+                });
+            SendRequest(request);
+
+            return asyncResult;
+        }
+
+        /// <summary>
+        /// Handles the end of an asynchronous SSH_FXP_LSTAT request.
+        /// </summary>
+        /// <param name="asyncResult">An <see cref="SFtpStatAsyncResult"/> that represents an asynchronous call.</param>
+        /// <returns>
+        /// The file attributes.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncResult"/> is <c>null</c>.</exception>
+        public SftpFileAttributes EndLStat(SFtpStatAsyncResult asyncResult)
+        {
+            if (asyncResult == null)
+                throw new ArgumentNullException("asyncResult");
+
+            if (asyncResult.EndInvokeCalled)
+                throw new InvalidOperationException("EndLStat has already been called.");
+
+            if (asyncResult.IsCompleted)
+                return asyncResult.EndInvoke();
+
+            using (var waitHandle = asyncResult.AsyncWaitHandle)
+            {
+                WaitOnHandle(waitHandle, OperationTimeout);
+                return asyncResult.EndInvoke();
+            }
+        }
+
+        /// <summary>
         /// Performs SSH_FXP_FSTAT request.
         /// </summary>
         /// <param name="handle">The handle.</param>
+        /// <param name="nullOnError">if set to <c>true</c> returns <c>null</c> instead of throwing an exception.</param>
         /// <returns>
         /// File attributes
         /// </returns>
-        public SftpFileAttributes RequestFStat(byte[] handle)
+        public SftpFileAttributes RequestFStat(byte[] handle, bool nullOnError)
         {
             SshException exception = null;
             SftpFileAttributes attributes = null;
@@ -464,7 +803,7 @@ namespace Renci.SshNet.Sftp
                 WaitOnHandle(wait, OperationTimeout);
             }
 
-            if (exception != null)
+            if (exception != null && !nullOnError)
             {
                 throw exception;
             }
@@ -534,7 +873,7 @@ namespace Renci.SshNet.Sftp
         /// Performs SSH_FXP_OPENDIR request
         /// </summary>
         /// <param name="path">The path.</param>
-        /// <param name="nullOnError">if set to <c>true</c> returns null instead of throwing an exception.</param>
+        /// <param name="nullOnError">if set to <c>true</c> returns <c>null</c> instead of throwing an exception.</param>
         /// <returns>File handle.</returns>
         public byte[] RequestOpenDir(string path, bool nullOnError = false)
         {
@@ -699,7 +1038,9 @@ namespace Renci.SshNet.Sftp
         /// </summary>
         /// <param name="path">The path.</param>
         /// <param name="nullOnError">if set to <c>true</c> returns null instead of throwing an exception.</param>
-        /// <returns></returns>
+        /// <returns>
+        /// The absolute path.
+        /// </returns>
         internal KeyValuePair<string, SftpFileAttributes>[] RequestRealPath(string path, bool nullOnError = false)
         {
             SshException exception = null;
@@ -734,6 +1075,59 @@ namespace Renci.SshNet.Sftp
         }
 
         /// <summary>
+        /// Performs SSH_FXP_REALPATH request.
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="callback">The <see cref="AsyncCallback"/> delegate that is executed when <see cref="BeginRealPath(string, AsyncCallback, object)"/> completes.</param>
+        /// <param name="state">An object that contains any additional user-defined data.</param>
+        /// <returns>
+        /// A <see cref="SftpRealPathAsyncResult"/> that represents the asynchronous call.
+        /// </returns>
+        public SftpRealPathAsyncResult BeginRealPath(string path, AsyncCallback callback, object state)
+        {
+            var asyncResult = new SftpRealPathAsyncResult(callback, state);
+
+            var request = new SftpRealPathRequest(ProtocolVersion, NextRequestId, path, Encoding,
+                response =>
+                {
+                    asyncResult.SetAsCompleted(response.Files[0].Key, false);
+                },
+                response =>
+                {
+                    asyncResult.SetAsCompleted(GetSftpException(response), false);
+                });
+            SendRequest(request);
+
+            return asyncResult;
+        }
+
+        /// <summary>
+        /// Handles the end of an asynchronous SSH_FXP_REALPATH request.
+        /// </summary>
+        /// <param name="asyncResult">An <see cref="SftpRealPathAsyncResult"/> that represents an asynchronous call.</param>
+        /// <returns>
+        /// The absolute path.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncResult"/> is <c>null</c>.</exception>
+        public string EndRealPath(SftpRealPathAsyncResult asyncResult)
+        {
+            if (asyncResult == null)
+                throw new ArgumentNullException("asyncResult");
+
+            if (asyncResult.EndInvokeCalled)
+                throw new InvalidOperationException("EndRealPath has already been called.");
+
+            if (asyncResult.IsCompleted)
+                return asyncResult.EndInvoke();
+
+            using (var waitHandle = asyncResult.AsyncWaitHandle)
+            {
+                WaitOnHandle(waitHandle, OperationTimeout);
+                return asyncResult.EndInvoke();
+            }
+        }
+
+        /// <summary>
         /// Performs SSH_FXP_STAT request.
         /// </summary>
         /// <param name="path">The path.</param>
@@ -741,7 +1135,7 @@ namespace Renci.SshNet.Sftp
         /// <returns>
         /// File attributes
         /// </returns>
-        internal SftpFileAttributes RequestStat(string path, bool nullOnError = false)
+        public SftpFileAttributes RequestStat(string path, bool nullOnError = false)
         {
             SshException exception = null;
 
@@ -772,6 +1166,59 @@ namespace Renci.SshNet.Sftp
             }
 
             return attributes;
+        }
+
+        /// <summary>
+        /// Performs SSH_FXP_STAT request
+        /// </summary>
+        /// <param name="path">The path.</param>
+        /// <param name="callback">The <see cref="AsyncCallback"/> delegate that is executed when <see cref="BeginStat(string, AsyncCallback, object)"/> completes.</param>
+        /// <param name="state">An object that contains any additional user-defined data.</param>
+        /// <returns>
+        /// A <see cref="SFtpStatAsyncResult"/> that represents the asynchronous call.
+        /// </returns>
+        public SFtpStatAsyncResult BeginStat(string path, AsyncCallback callback, object state)
+        {
+            var asyncResult = new SFtpStatAsyncResult(callback, state);
+
+            var request = new SftpStatRequest(ProtocolVersion, NextRequestId, path, Encoding,
+                response =>
+                {
+                    asyncResult.SetAsCompleted(response.Attributes, false);
+                },
+                response =>
+                {
+                    asyncResult.SetAsCompleted(GetSftpException(response), false);
+                });
+            SendRequest(request);
+
+            return asyncResult;
+        }
+
+        /// <summary>
+        /// Handles the end of an asynchronous stat.
+        /// </summary>
+        /// <param name="asyncResult">An <see cref="SFtpStatAsyncResult"/> that represents an asynchronous call.</param>
+        /// <returns>
+        /// The file attributes.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"><paramref name="asyncResult"/> is <c>null</c>.</exception>
+        public SftpFileAttributes EndStat(SFtpStatAsyncResult asyncResult)
+        {
+            if (asyncResult == null)
+                throw new ArgumentNullException("asyncResult");
+
+            if (asyncResult.EndInvokeCalled)
+                throw new InvalidOperationException("EndStat has already been called.");
+
+            if (asyncResult.IsCompleted)
+                return asyncResult.EndInvoke();
+
+            using (var waitHandle = asyncResult.AsyncWaitHandle)
+            {
+                WaitOnHandle(waitHandle, OperationTimeout);
+                return asyncResult.EndInvoke();
+            }
         }
 
         /// <summary>
@@ -1076,6 +1523,8 @@ namespace Renci.SshNet.Sftp
             // bytes 6 to 9: response id
             // bytes 10 to 13: length of payload‏
             //
+            // WinSCP uses a payload length of 32755 bytes
+            //
             // most ssh servers limit the size of the payload of a SSH_MSG_CHANNEL_DATA
             // response to 16 KB; if we requested 16 KB of data, then the SSH_FXP_DATA
             // payload of the SSH_MSG_CHANNEL_DATA message would be too big (16 KB + 13 bytes), and
@@ -1107,6 +1556,10 @@ namespace Renci.SshNet.Sftp
             // <handle>
             // 14-21: offset
             // 22-25: data length
+
+            // Putty uses data length of 4096 bytes
+            // WinSCP uses data length of 32739 bytes (total 32768 bytes; 32739 + 25 + 4 bytes for handle)
+
             var lengthOfNonDataProtocolFields = 25u + (uint)handle.Length;
             var maximumPacketSize = Channel.RemotePacketSize;
             return Math.Min(bufferSize, maximumPacketSize) - lengthOfNonDataProtocolFields;
@@ -1114,19 +1567,17 @@ namespace Renci.SshNet.Sftp
 
         private static SshException GetSftpException(SftpStatusResponse response)
         {
-            if (response.StatusCode == StatusCodes.Ok)
+            switch (response.StatusCode)
             {
-                return null;
+                case StatusCodes.Ok:
+                    return null;
+                case StatusCodes.PermissionDenied:
+                    return new SftpPermissionDeniedException(response.ErrorMessage);
+                case StatusCodes.NoSuchFile:
+                    return new SftpPathNotFoundException(response.ErrorMessage);
+                default:
+                    return new SshException(response.ErrorMessage);
             }
-            if (response.StatusCode == StatusCodes.PermissionDenied)
-            {
-                return new SftpPermissionDeniedException(response.ErrorMessage);
-            }
-            if (response.StatusCode == StatusCodes.NoSuchFile)
-            {
-                return new SftpPathNotFoundException(response.ErrorMessage);
-            }
-            return new SshException(response.ErrorMessage);
         }
 
         private void HandleResponse(SftpResponse response)
