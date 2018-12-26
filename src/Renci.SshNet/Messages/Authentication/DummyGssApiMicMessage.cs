@@ -35,6 +35,17 @@ namespace Renci.SshNet.Messages.Authentication
         /// <summary>
         /// 
         /// </summary>
+        protected override int BufferCapacity
+        {
+            get
+            {
+                return -1;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         protected override void SaveData()
         {
             WriteBinaryString(_sessionId);
