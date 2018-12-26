@@ -397,6 +397,16 @@ namespace Renci.SshNet
         /// </summary>
         internal event EventHandler<MessageEventArgs<KeyExchangeDhGroupExchangeReply>> KeyExchangeDhGroupExchangeReplyReceived;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        internal event EventHandler<MessageEventArgs<GssapiResponseMessage>> GssapiResponseReceived;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        internal event EventHandler<MessageEventArgs<GssapiTokenMessage>> GssapiTokenReceived;
+
         #region Message events
 
         /// <summary>
@@ -1615,6 +1625,20 @@ namespace Renci.SshNet
             var handlers = HostKeyReceived;
             if (handlers != null)
                 handlers(this, e);
+        }
+
+        internal void OnGssapiResponseReceived(GssapiResponseMessage message)
+        {
+            var handlers = GssapiResponseReceived;
+            if (handlers != null)
+                handlers(this, new MessageEventArgs<GssapiResponseMessage>(message));
+        }
+
+        internal void OnGssapiTokenReceived(GssapiTokenMessage message)
+        {
+            var handlers = GssapiTokenReceived;
+            if (handlers != null)
+                handlers(this, new MessageEventArgs<GssapiTokenMessage>(message));
         }
 
         #region Message loading functions

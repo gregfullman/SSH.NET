@@ -371,6 +371,21 @@
     <Compile Include="..\Renci.SshNet\Messages\Authentication\SuccessMessage.cs">
       <Link>Messages\Authentication\SuccessMessage.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Authentication\DummyGssApiMicMessage.cs">
+      <Link>Messages\Authentication\DummyGssApiMicMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Authentication\GssapiMicMessage.cs">
+      <Link>Messages\Authentication\GssapiMicMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Authentication\GssapiResponseMessage.cs">
+      <Link>Messages\Authentication\GssapiResponseMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Authentication\GssapiTokenMessage.cs">
+      <Link>Messages\Authentication\GssapiTokenMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Authentication\RequestMessageKerberos.cs">
+      <Link>Messages\Authentication\RequestMessageKerberos.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Messages\Connection\CancelTcpIpForwardGlobalRequestMessage.cs">
       <Link>Messages\Connection\CancelTcpIpForwardGlobalRequestMessage.cs</Link>
     </Compile>

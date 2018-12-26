@@ -147,6 +147,7 @@
     </Compile>
     <Compile Include="ConnectionInfo.cs" />
     <Compile Include="ForwardedPortStatus.cs" />
+    <Compile Include="GssApi.cs" />
     <Compile Include="HashInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -159,6 +160,13 @@
     <Compile Include="IServiceFactory.NET.cs" />
     <Compile Include="ISession.cs" />
     <Compile Include="ISubsystemSession.cs" />
+    <Compile Include="KerberosAuthenticationMethod.cs" />
+    <Compile Include="KerberosConnectionInfo.cs" />
+    <Compile Include="Messages\Authentication\DummyGssApiMicMessage.cs" />
+    <Compile Include="Messages\Authentication\GssapiMicMessage.cs" />
+    <Compile Include="Messages\Authentication\GssapiResponseMessage.cs" />
+    <Compile Include="Messages\Authentication\GssapiTokenMessage.cs" />
+    <Compile Include="Messages\Authentication\RequestMessageKerberos.cs" />
     <Compile Include="Messages\Connection\CancelTcpIpForwardGlobalRequestMessage.cs" />
     <Compile Include="Messages\Connection\TcpIpForwardGlobalRequestMessage.cs" />
     <Compile Include="Messages\Transport\KeyExchangeEcdhInitMessage.cs" />
