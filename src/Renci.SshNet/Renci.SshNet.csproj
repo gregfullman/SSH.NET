@@ -467,6 +467,7 @@
     <Compile Include="SshCommand.cs" />
     <Compile Include="SshMessageFactory.cs" />
     <Compile Include="SubsystemSession.cs" />
+    <Compile Include="Translators\XTermShellTranslator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Renci.SshNet.snk">

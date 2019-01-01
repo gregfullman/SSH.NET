@@ -464,6 +464,25 @@ namespace Renci.SshNet
         }
 
         /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="terminalName"></param>
+        /// <param name="columns"></param>
+        /// <param name="rows"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <param name="bufferSize"></param>
+        /// <param name="terminalModeValues"></param>
+        /// <param name="shellTranslator"></param>
+        /// <returns></returns>
+        public ShellStream CreateShellStream(string terminalName, uint columns, uint rows, uint width, uint height, int bufferSize, IDictionary<TerminalModes, uint> terminalModeValues, Func<string, string> shellTranslator)
+        {
+            EnsureSessionIsOpen();
+
+            return ServiceFactory.CreateShellStream(Session, terminalName, columns, rows, width, height, terminalModeValues, bufferSize, shellTranslator);
+        }
+
+        /// <summary>
         /// Stops forwarded ports.
         /// </summary>
         protected override void OnDisconnected()

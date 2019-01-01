@@ -26,6 +26,9 @@ namespace Renci.SshNet
         private AutoResetEvent _dataReceived = new AutoResetEvent(false);
         private bool _isDisposed;
 
+        private readonly Func<string, string> _shellTranslator;
+        private StringBuilder _tempIncomingHolder = new StringBuilder();
+
         /// <summary>
         /// Occurs when data was received.
         /// </summary>
@@ -46,9 +49,19 @@ namespace Renci.SshNet
         {
             get
             {
-                lock (_incoming)
+                if (_shellTranslator == null)
                 {
-                    return _incoming.Count > 0;
+                    lock (_incoming)
+                    {
+                        return _incoming.Count > 0;
+                    }
+                }
+                else
+                {
+                    lock(_tempIncomingHolder)
+                    {
+                        return _tempIncomingHolder.Length > 0;
+                    }
                 }
             }
         }
@@ -110,6 +123,12 @@ namespace Renci.SshNet
                 _channel.Dispose();
                 throw;
             }
+        }
+
+        internal ShellStream(ISession session, string terminalName, uint columns, uint rows, uint width, uint height, IDictionary<TerminalModes, uint> terminalModeValues, int bufferSize, Func<string, string> shellTranslator)
+            : this(session, terminalName, columns, rows, width, height, terminalModeValues, bufferSize)
+        {
+            _shellTranslator = shellTranslator;
         }
 
         #region Stream overide methods
@@ -176,9 +195,19 @@ namespace Renci.SshNet
         {
             get
             {
-                lock (_incoming)
+                if (_shellTranslator == null)
                 {
-                    return _incoming.Count;
+                    lock (_incoming)
+                    {
+                        return _incoming.Count;
+                    }
+                }
+                else
+                {
+                    lock(_tempIncomingHolder)
+                    {
+                        return _tempIncomingHolder.Length;
+                    }
                 }
             }
         }
@@ -217,6 +246,7 @@ namespace Renci.SshNet
         {
             var i = 0;
 
+            // TODO: support when translated
             lock (_incoming)
             {
                 for (; i < count && _incoming.Count > 0; i++)
@@ -309,6 +339,18 @@ namespace Renci.SshNet
                     if (_incoming.Count > 0)
                     {
                         text = _encoding.GetString(_incoming.ToArray(), 0, _incoming.Count);
+                        
+                        if(_shellTranslator != null)
+                        {
+                            text = _shellTranslator(text);
+                            _tempIncomingHolder.Append(text);
+                            _incoming.Clear();
+                        }
+                    }
+
+                    if(_shellTranslator != null && _tempIncomingHolder.Length > 0)
+                    {
+                        text = _tempIncomingHolder.ToString();
                     }
 
                     if (text.Length > 0)
@@ -321,10 +363,17 @@ namespace Renci.SshNet
                             {
                                 var result = text.Substring(0, match.Index + match.Length);
 
-                                for (var i = 0; i < match.Index + match.Length && _incoming.Count > 0; i++)
+                                if (_shellTranslator != null)
                                 {
-                                    //  Remove processed items from the queue
-                                    _incoming.Dequeue();
+                                    _tempIncomingHolder.Remove(0, match.Index + match.Length);
+                                }
+                                else
+                                {
+                                    for (var i = 0; i < match.Index + match.Length && _incoming.Count > 0; i++)
+                                    {
+                                        //  Remove processed items from the queue
+                                        _incoming.Dequeue();
+                                    }
                                 }
 
                                 expectAction.Action(result);
@@ -557,16 +606,36 @@ namespace Renci.SshNet
                     if (_incoming.Count > 0)
                     {
                         text = _encoding.GetString(_incoming.ToArray(), 0, _incoming.Count);
+
+                        if (_shellTranslator != null)
+                        {
+                            text = _shellTranslator(text);
+                            _tempIncomingHolder.Append(text);
+                            _incoming.Clear();
+                        }
+                    }
+
+                    if (_shellTranslator != null && _tempIncomingHolder.Length > 0)
+                    {
+                        text = _tempIncomingHolder.ToString();
                     }
 
                     var match = regex.Match(text);
 
                     if (match.Success)
                     {
-                        //  Remove processed items from the queue
-                        for (var i = 0; i < match.Index + match.Length && _incoming.Count > 0; i++)
+                        if (_shellTranslator != null)
                         {
-                            _incoming.Dequeue();
+                            text = _tempIncomingHolder.ToString().Substring(0, match.Index + match.Length);
+                            _tempIncomingHolder.Remove(0, match.Index + match.Length);
+                        }
+                        else
+                        {
+                            //  Remove processed items from the queue
+                            for (var i = 0; i < match.Index + match.Length && _incoming.Count > 0; i++)
+                            {
+                                _incoming.Dequeue();
+                            }
                         }
                         break;
                     }

@@ -188,5 +188,23 @@ namespace Renci.SshNet
         {
             return RemotePathTransformation.DoubleQuote;
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="terminalName"></param>
+        /// <param name="columns"></param>
+        /// <param name="rows"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <param name="terminalModeValues"></param>
+        /// <param name="bufferSize"></param>
+        /// <param name="shellTranslator"></param>
+        /// <returns></returns>
+        public ShellStream CreateShellStream(ISession session, string terminalName, uint columns, uint rows, uint width, uint height, IDictionary<TerminalModes, uint> terminalModeValues, int bufferSize, Func<string, string> shellTranslator)
+        {
+            return new ShellStream(session, terminalName, columns, rows, width, height, terminalModeValues, bufferSize, shellTranslator);
+        }
     }
 }
